@@ -1,0 +1,14 @@
+build/*
+data/bin_graph/*
+data/txt_graph/*
+.vscode/*
+legacy/*
+examples/*
+script/*
+a.out
+.DS_Store
+*.o
+main
+cu_test
+
+

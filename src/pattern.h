@@ -25,7 +25,7 @@ enum CondOperator { LESS_THAN, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
     set_op_t set_ops[MAX_SLOT_NUM];
 
 
-    int backward_neighbors[PAT_SIZE * PAT_SIZE];
+    int backward_neighbors[PAT_SIZE][PAT_SIZE];
     int num_BN[PAT_SIZE];
     int condition_order[PAT_SIZE * PAT_SIZE * 2];
     int condition_cnt[PAT_SIZE];
@@ -324,9 +324,9 @@ enum CondOperator { LESS_THAN, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
         {
           if (i > j)
           {
-            pat->condition_order[index] = CondOperator::NON_EQUAL;
-            pat->condition_order[index + 1] = j;
-            pat->condition_cnt[i] += 1;
+            pat.condition_order[index] = CondOperator::NON_EQUAL;
+            pat.condition_order[index + 1] = j;
+            pat.condition_cnt[i] += 1;
             index += 2;
           }
         }

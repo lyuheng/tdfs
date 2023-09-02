@@ -194,7 +194,7 @@ namespace STMatch
 	__forceinline__ __device__ graph_node_t *path_address(CallStack *stk, Pattern *pat, int level)
 	{
 		if (level > 0)
-			return &(stk->slot_storage[level][stk->iter[level]);
+			return &(stk->slot_storage[level][stk->iter[level]]);
 		else
 		{
 			return &(stk->slot_storage[0][stk->iter[0] + (level + 1) * JOB_CHUNK_SIZE]); // -1 or 0
@@ -319,14 +319,14 @@ namespace STMatch
 		int res_length = 0;
 		bool pred;
 		int actual_lvl = arg->level + 1;
-		for (int i = threadIdx.x % WARP_SIZE; i < arg->set2; i += WARP_SIZE)
+		for (int i = threadIdx.x % WARP_SIZE; i < arg->set2_size; i += WARP_SIZE)
 		{
 			pred = true;
 			int target = arg->set2[i];
 			for (int k = 0; k < arg->pat->condition_cnt[actual_lvl]; ++k)
 			{
-				int cond = pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k];
-                int cond_lvl = pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k + 1];
+				int cond = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k];
+                int cond_lvl = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k + 1];
                 int cond_vertex_M = path(stk, pat, cond_lvl - 1);
 				if (cond == CondOperator::NON_EQUAL)
 				{
@@ -391,10 +391,10 @@ namespace STMatch
 				{
 					for (int j = 0; j < 2; j++)
 					{
-						stk->slot_storage[0][k][i + JOB_CHUNK_SIZE * j] = (q->q[cur_job + i].nodes)[j];
+						stk->slot_storage[0][i + JOB_CHUNK_SIZE * j] = (q->q[cur_job + i].nodes)[j];
 					}
 				}
-				stk->slot_size[0][k] = njobs;
+				stk->slot_size[0] = njobs;
 			}
 			__syncwarp();
 		}
@@ -416,13 +416,13 @@ namespace STMatch
 
 				for (int i = 1; i < pat->num_BN[actual_lvl]; ++i)
 				{
-					int BN = pat->backward_neighbors[actual_lvl][0];
+					int BN = pat->backward_neighbors[actual_lvl][i];
 					t = path(stk, pat, BN - 1);
 					int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
-					if (neighbors_cnt < min_neighbor)
+					if (neighbor_cnt < min_neighbor)
 					{
 						t_min = t;
-						min_neighbor = neighbors_cnt;
+						min_neighbor = neighbor_cnt;
 					}
 				}
 				arr_copy(stk->slot_storage[level], &g->colidx[g->rowptr[t_min]], min_neighbor);
@@ -433,7 +433,7 @@ namespace STMatch
 
 					int BN = pat->backward_neighbors[actual_lvl][i];
 					t = path(stk, pat, BN - 1);
-					int neighbor = &g->colidx[g->rowptr[t]];
+					int* neighbor = &g->colidx[g->rowptr[t]];
 					int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
 
 					arg[wid].set1 = neighbor;
