@@ -3,6 +3,8 @@
 
 #define UNROLL_SIZE(l) (l > 0 ? UNROLL : 1)
 
+#define LANEID (threadIdx.x % WARP_SIZE)
+
 namespace STMatch
 {
 	struct StealingArgs
@@ -404,7 +406,8 @@ namespace STMatch
 			arg[wid].level = level;
 			arg[wid].pat = pat;
 
-			printf("level = %d", level);
+			if (LANEID == 0)
+				printf("level = %d", level);
 
 			int actual_lvl = level + 1;
 			
