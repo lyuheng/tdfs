@@ -315,6 +315,16 @@ enum CondOperator { LESS_THAN, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
         }
         visited[vertex] = true;
       }
+      std::cout << "# BNs:\n"; 
+      for(int i = 0; i < pat.nnodes; ++i)
+      {
+        for (int j = 0; j < pat.num_BN[i]; ++j)
+        {
+          std::cout << pat.backward_neighbors[i][j] << " ";
+        } 
+        std::cout << "\n";
+      }
+      std::cout << std::endl;
       // ======================= execute condition array ===============
 
       for (int i = 0; i < pat.nnodes; ++i) // idx
