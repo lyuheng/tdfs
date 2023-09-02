@@ -562,11 +562,11 @@ namespace STMatch
 			else if (level == pat->nnodes - 2)
 			{
 
-				extend(g, pat, stk, q, level);
+				// extend(g, pat, stk, q, level);
 
-				if (threadIdx.x % WARP_SIZE == 0)
+				if (LANEID == 0)
 				{
-					*count += stk->slot_size[level];
+					*count += 0; // stk->slot_size[level];
 				}
 				__syncwarp();
 				stk->slot_size[level] = 0;
