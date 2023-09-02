@@ -329,7 +329,7 @@ enum CondOperator { LESS_THAN, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
 
       for (int i = 0; i < pat.nnodes; ++i) // idx
       {
-        int index = i * pat.nnodes * 2;
+        int index = i * PAT_SIZE * 2;
         for (int j = 0; j < pat.nnodes; ++j) // idx
         {
           if (i > j)
@@ -341,6 +341,18 @@ enum CondOperator { LESS_THAN, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
           }
         }
       }
+
+      std::cout << "# Conditions:\n"; 
+      for(int i = 0; i < pat.nnodes; ++i)
+      {
+        for (int j = 0; j < pat.condition_order[i]; ++j)
+        {
+          std::cout << pat.backward_neighbors[i * PAT_SIZE * 2 + j * 2] << " " 
+                    << pat.backward_neighbors[i * PAT_SIZE * 2 + j * 2 + 1] << " | ";
+        } 
+        std::cout << "\n";
+      }
+      std::cout << std::endl;
     }
 
     int bitidx(bitarray32 a) {
