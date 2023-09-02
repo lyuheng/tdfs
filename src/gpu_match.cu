@@ -320,6 +320,7 @@ namespace STMatch
 	{
 		int res_length = 0;
 		bool pred;
+		int target;
 		int actual_lvl = arg->level + 1;
 		for (int i = 0; i < arg->set2_size; i += WARP_SIZE)
 		{
