@@ -321,28 +321,33 @@ namespace STMatch
 		int res_length = 0;
 		bool pred;
 		int actual_lvl = arg->level + 1;
-		for (int i = threadIdx.x % WARP_SIZE; i < arg->set2_size; i += WARP_SIZE)
+		for (int i = 0; i < arg->set2_size; i += WARP_SIZE)
 		{
-			pred = true;
-			int target = arg->set2[i];
-			for (int k = 0; k < arg->pat->condition_cnt[actual_lvl]; ++k)
+			pred = false;
+			int il = i + LANEID;
+			if (il < arg->set2_size)
 			{
-				int cond = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k];
-                int cond_lvl = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k + 1];
-                int cond_vertex_M = path(stk, arg->pat, cond_lvl - 1);
-				if (cond == CondOperator::NON_EQUAL)
+				pred = true;
+				int target = arg->set2[i];
+				for (int k = 0; k < arg->pat->condition_cnt[actual_lvl]; ++k)
 				{
-					if (cond_vertex_M == target)
+					int cond = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k];
+					int cond_lvl = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k + 1];
+					int cond_vertex_M = path(stk, arg->pat, cond_lvl - 1);
+					if (cond == CondOperator::NON_EQUAL)
 					{
-						pred = false;
-						break;
+						if (cond_vertex_M == target)
+						{
+							pred = false;
+							break;
+						}
 					}
 				}
+				if (pred)
+				{
+					pred = bsearch_exist(arg->set1, arg->set1_size, target);
+				}
 			}
-			// if (pred)
-			// {
-			// 	pred = bsearch_exist(arg->set1, arg->set1_size, target);
-			// }
 			int loc = scanIndex(pred) + res_length;
 			if (arg->level < arg->pat->nnodes - 2 && pred) 
 				arg->res[loc] = target;
