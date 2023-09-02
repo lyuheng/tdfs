@@ -417,6 +417,7 @@ namespace STMatch
 			{
 				int BN = pat->backward_neighbors[actual_lvl][0];
 				graph_node_t t = path(stk, pat, BN - 1);
+				int i_min = 0;
 				int t_min = t;
 				int min_neighbor = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
 
@@ -427,6 +428,7 @@ namespace STMatch
 					int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
 					if (neighbor_cnt < min_neighbor)
 					{
+						i_min = i;
 						t_min = t;
 						min_neighbor = neighbor_cnt;
 					}
@@ -436,7 +438,7 @@ namespace STMatch
 
 				for (int i = 0; i < pat->num_BN[actual_lvl]; ++i)
 				{
-					if (i == t_min) continue;
+					if (i == i_min) continue;
 
 					int BN = pat->backward_neighbors[actual_lvl][i];
 					t = path(stk, pat, BN - 1);
