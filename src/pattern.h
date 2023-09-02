@@ -299,8 +299,8 @@ enum CondOperator { LESS_THAN, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
       }
       //================== execute condition array ==================
       std::vector<bool> visited(pat.nnodes, false);
-      memset(pat.backward_neighbors, 0, sizeof(int)*PAT_SIZE);
-      memset(pat.num_BN, 0, sizeof(int)*PAT_SIZE);
+      memset(pat.backward_neighbors, 0, sizeof(pat.backward_neighbors));
+      memset(pat.num_BN, 0, sizeof(pat.num_BN));
 
       visited[vertex_order_[0]] = true;
 
@@ -327,6 +327,8 @@ enum CondOperator { LESS_THAN, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
       std::cout << std::endl;
       // ======================= execute condition array ===============
 
+      memset(pat.condition_order, 0, sizeof(pat.condition_order));
+      memset(pat.condition_cnt, 0, sizeof(pat.condition_cnt));
       for (int i = 0; i < pat.nnodes; ++i) // idx
       {
         int index = i * PAT_SIZE * 2;
