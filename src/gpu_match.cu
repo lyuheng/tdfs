@@ -406,8 +406,8 @@ namespace STMatch
 			arg[wid].level = level;
 			arg[wid].pat = pat;
 
-			if (LANEID == 0)
-				printf("level = %d", level);
+			// if (LANEID == 0)
+			// 	printf("level = %d", level);
 
 			int actual_lvl = level + 1;
 			
@@ -432,6 +432,7 @@ namespace STMatch
 					}
 				}
 				arr_copy(stk->slot_storage[level], &g->colidx[g->rowptr[t_min]], min_neighbor);
+				stk->slot_size[level] = min_neighbor;
 
 				for (int i = 0; i < pat->num_BN[actual_lvl]; ++i)
 				{
