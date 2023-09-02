@@ -345,10 +345,10 @@ enum CondOperator { LESS_THAN, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
       std::cout << "# Conditions:\n"; 
       for(int i = 0; i < pat.nnodes; ++i)
       {
-        for (int j = 0; j < pat.condition_order[i]; ++j)
+        for (int j = 0; j < pat.condition_cnt[i]; ++j)
         {
-          std::cout << pat.backward_neighbors[i * PAT_SIZE * 2 + j * 2] << " " 
-                    << pat.backward_neighbors[i * PAT_SIZE * 2 + j * 2 + 1] << " | ";
+          std::cout << pat.condition_order[i * PAT_SIZE * 2 + j * 2] << " " 
+                    << pat.condition_order[i * PAT_SIZE * 2 + j * 2 + 1] << " | ";
         } 
         std::cout << "\n";
       }
