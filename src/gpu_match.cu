@@ -327,7 +327,7 @@ namespace STMatch
 			{
 				int cond = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k];
                 int cond_lvl = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k + 1];
-                int cond_vertex_M = path(stk, pat, cond_lvl - 1);
+                int cond_vertex_M = path(stk, arg->pat, cond_lvl - 1);
 				if (cond == CondOperator::NON_EQUAL)
 				{
 					if (cond_vertex_M == target)
