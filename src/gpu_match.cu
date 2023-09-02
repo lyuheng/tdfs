@@ -339,13 +339,13 @@ namespace STMatch
 					}
 				}
 			}
-			if (pred)
-			{
-				pred = bsearch_exist(arg->set1, arg->set1_size, target);
-			}
+			// if (pred)
+			// {
+			// 	pred = bsearch_exist(arg->set1, arg->set1_size, target);
+			// }
 			int loc = scanIndex(pred) + res_length;
 			if (arg->level < arg->pat->nnodes - 2 && pred) 
-				arg->res[loc] = arg->set2[i];
+				arg->res[loc] = target;
 			if (threadIdx.x % WARP_SIZE == 31) // last lane's loc+pred is number of items found in this scan
 				res_length = loc + pred;
 			res_length = __shfl_sync(0xFFFFFFFF, res_length, 31);
