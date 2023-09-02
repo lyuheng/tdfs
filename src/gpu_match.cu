@@ -402,57 +402,57 @@ namespace STMatch
 		}
 		else
 		{
-			arg[wid].g = g;
-			arg[wid].level = level;
-			arg[wid].pat = pat;
+			// arg[wid].g = g;
+			// arg[wid].level = level;
+			// arg[wid].pat = pat;
 
-			// if (LANEID == 0)
-			// 	printf("level = %d", level);
+			// // if (LANEID == 0)
+			// // 	printf("level = %d", level);
 
-			int actual_lvl = level + 1;
+			// int actual_lvl = level + 1;
 			
-			if (pat->num_BN[actual_lvl] == 0)
-				assert(false);
-			else
-			{
-				int BN = pat->backward_neighbors[actual_lvl][0];
-				graph_node_t t = path(stk, pat, BN - 1);
-				int t_min = t;
-				int min_neighbor = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
+			// if (pat->num_BN[actual_lvl] == 0)
+			// 	assert(false);
+			// else
+			// {
+			// 	int BN = pat->backward_neighbors[actual_lvl][0];
+			// 	graph_node_t t = path(stk, pat, BN - 1);
+			// 	int t_min = t;
+			// 	int min_neighbor = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
 
-				for (int i = 1; i < pat->num_BN[actual_lvl]; ++i)
-				{
-					int BN = pat->backward_neighbors[actual_lvl][i];
-					t = path(stk, pat, BN - 1);
-					int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
-					if (neighbor_cnt < min_neighbor)
-					{
-						t_min = t;
-						min_neighbor = neighbor_cnt;
-					}
-				}
-				arr_copy(stk->slot_storage[level], &g->colidx[g->rowptr[t_min]], min_neighbor);
-				stk->slot_size[level] = min_neighbor;
+			// 	for (int i = 1; i < pat->num_BN[actual_lvl]; ++i)
+			// 	{
+			// 		int BN = pat->backward_neighbors[actual_lvl][i];
+			// 		t = path(stk, pat, BN - 1);
+			// 		int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
+			// 		if (neighbor_cnt < min_neighbor)
+			// 		{
+			// 			t_min = t;
+			// 			min_neighbor = neighbor_cnt;
+			// 		}
+			// 	}
+			// 	arr_copy(stk->slot_storage[level], &g->colidx[g->rowptr[t_min]], min_neighbor);
+			// 	stk->slot_size[level] = min_neighbor;
 
-				for (int i = 0; i < pat->num_BN[actual_lvl]; ++i)
-				{
-					if (i == t_min) continue;
+			// 	for (int i = 0; i < pat->num_BN[actual_lvl]; ++i)
+			// 	{
+			// 		if (i == t_min) continue;
 
-					int BN = pat->backward_neighbors[actual_lvl][i];
-					t = path(stk, pat, BN - 1);
-					int* neighbor = &g->colidx[g->rowptr[t]];
-					int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
+			// 		int BN = pat->backward_neighbors[actual_lvl][i];
+			// 		t = path(stk, pat, BN - 1);
+			// 		int* neighbor = &g->colidx[g->rowptr[t]];
+			// 		int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
 
-					arg[wid].set1 = neighbor;
-					arg[wid].set1_size = neighbor_cnt;
-					arg[wid].set2 = stk->slot_storage[level];
-					arg[wid].set2_size = stk->slot_size[level];
-					arg[wid].res = stk->slot_storage[level];
-					arg[wid].res_size = &(stk->slot_size[level]);
+			// 		arg[wid].set1 = neighbor;
+			// 		arg[wid].set1_size = neighbor_cnt;
+			// 		arg[wid].set2 = stk->slot_storage[level];
+			// 		arg[wid].set2_size = stk->slot_size[level];
+			// 		arg[wid].res = stk->slot_storage[level];
+			// 		arg[wid].res_size = &(stk->slot_size[level]);
 
-					compute_intersection(&arg[wid], stk);
-				}
-			}
+			// 		compute_intersection(&arg[wid], stk);
+			// 	}
+			// }
 		}
 		stk->iter[level] = 0;
 	}
@@ -562,11 +562,11 @@ namespace STMatch
 			else if (level == pat->nnodes - 2)
 			{
 
-				// extend(g, pat, stk, q, level);
+				extend(g, pat, stk, q, level);
 
 				if (LANEID == 0)
 				{
-					*count += 0; // stk->slot_size[level];
+					*count += stk->slot_size[level];
 				}
 				__syncwarp();
 				stk->slot_size[level] = 0;
