@@ -403,6 +403,9 @@ namespace STMatch
 			arg[wid].g = g;
 			arg[wid].level = level;
 			arg[wid].pat = pat;
+
+			printf("level = %d", level);
+
 			int actual_lvl = level + 1;
 			
 			if (pat->num_BN[actual_lvl] == 0)
@@ -444,7 +447,7 @@ namespace STMatch
 					arg[wid].res_size = &(stk->slot_size[level]);
 
 					compute_intersection(&arg[wid], stk);
-				}	
+				}
 			}
 		}
 		stk->iter[level] = 0;

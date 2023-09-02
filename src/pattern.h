@@ -13,7 +13,7 @@
 
 namespace STMatch {
 
-enum CondOperator { LESS_THAN, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
+enum CondOperator { LESS_THAN = 0, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
 
   typedef struct {
 
