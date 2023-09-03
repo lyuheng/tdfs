@@ -27,113 +27,52 @@ namespace STMatch
 		atomicExch((int *)mutex, 0);
 	}
 	
+	// target_stk is the warp being stolen
 	__device__ bool trans_layer(CallStack &_target_stk, CallStack &_cur_stk, Pattern *_pat, int _k, int ratio = 2)
 	{
 		if (_target_stk.level <= _k)
 			return false;
 
-		int num_left_task = _target_stk.slot_size[_pat->rowptr[_k]][_target_stk.uiter[_k]] -
-							(_target_stk.iter[_k] + _target_stk.uiter[_k + 1] + 1);
+		int num_left_task = _target_stk.slot_size[_k] - (_target_stk.iter[_k] + 1);
 		if (num_left_task <= 0)
 			return false;
 
-		int stealed_start_idx_in_target = _target_stk.iter[_k] + _target_stk.uiter[_k + 1] + 1 + num_left_task / ratio;
+		int stealed_start_idx_in_target = _target_stk.iter[_k] + 1 + num_left_task / ratio;
 
-		_cur_stk.slot_storage[_pat->rowptr[0]][_target_stk.uiter[0]][_target_stk.iter[0] + _target_stk.uiter[1]] = _target_stk.slot_storage[_pat->rowptr[0]][_target_stk.uiter[0]][_target_stk.iter[0] + _target_stk.uiter[1]];
-		_cur_stk.slot_storage[_pat->rowptr[0]][_target_stk.uiter[0]][_target_stk.iter[0] + _target_stk.uiter[1] + JOB_CHUNK_SIZE] = _target_stk.slot_storage[_pat->rowptr[0]][_target_stk.uiter[0]][_target_stk.iter[0] + _target_stk.uiter[1] + JOB_CHUNK_SIZE];
+		_cur_stk.slot_storage[0][_target_stk.iter[0]] = _target_stk.slot_storage[0][_target_stk.iter[0]];
+		_cur_stk.slot_storage[0][_target_stk.iter[0] + JOB_CHUNK_SIZE] = _target_stk.slot_storage[0][_target_stk.iter[0] + JOB_CHUNK_SIZE];
 
 		for (int i = 1; i < _k; i++)
 		{
-			_cur_stk.slot_storage[_pat->rowptr[i]][_target_stk.uiter[i]][_target_stk.iter[i] + _target_stk.uiter[i + 1]] = _target_stk.slot_storage[_pat->rowptr[i]][_target_stk.uiter[i]][_target_stk.iter[i] + _target_stk.uiter[i + 1]];
+			_cur_stk.slot_storage[i][_target_stk.iter[i]] = _target_stk.slot_storage[i][_target_stk.iter[i]];
 		}
 
-		for (int r = _pat->rowptr[_k]; r < _pat->rowptr[_k + 1]; r++)
+		int loop_end = _k == 0 ? JOB_CHUNK_SIZE * 2 : _target_stk.slot_size[_k];
+		for (int t = 0; t < loop_end; t++)
 		{
-			for (int u = 0; u < UNROLL_SIZE(_k); u++)
-			{
-				int loop_end = _k == 0 ? JOB_CHUNK_SIZE * 2 : _target_stk.slot_size[r][u];
-				for (int t = 0; t < loop_end; t++)
-				{
-					_cur_stk.slot_storage[r][u][t] = _target_stk.slot_storage[r][u][t];
-				}
-			}
+			_cur_stk.slot_storage[_k][t] = _target_stk.slot_storage[_k][t];
 		}
 
 		for (int l = 0; l < _k; l++)
 		{
 			_cur_stk.iter[l] = _target_stk.iter[l];
-			_cur_stk.uiter[l] = _target_stk.uiter[l];
-			for (int s = _pat->rowptr[l]; s < _pat->rowptr[l + 1]; s++)
-			{
-				if (s > _pat->rowptr[l])
-				{
-					for (int u = 0; u < UNROLL; u++)
-					{
-						_cur_stk.slot_size[s][u] = _target_stk.slot_size[s][u];
-					}
-				}
-				else
-				{
-					for (int u = 0; u < UNROLL_SIZE(l); u++)
-					{
-						if (u == _cur_stk.uiter[l])
-							_cur_stk.slot_size[_pat->rowptr[l]][u] = _target_stk.iter[l] + 1;
-						else
-							_cur_stk.slot_size[_pat->rowptr[l]][u] = 0;
-					}
-				}
-			}
+			_cur_stk.slot_size[l] = _target_stk.iter[l] + 1;
 		}
 
-		// copy
-		for (int i = stealed_start_idx_in_target - _target_stk.iter[_k]; i < UNROLL_SIZE(_k + 1); i++)
-		{
-			_target_stk.slot_size[_pat->rowptr[_k + 1]][i] = 0;
-		}
+		_cur_stk.slot_size[_k] = _target_stk.slot_size[_k];
 
-		for (int s = _pat->rowptr[_k]; s < _pat->rowptr[_k + 1]; s++)
-		{
-			if (s == _pat->rowptr[_k])
-			{
-				for (int u = 0; u < UNROLL_SIZE(_k); u++)
-				{
-					if (u == _target_stk.uiter[_k])
-						_cur_stk.slot_size[s][u] = _target_stk.slot_size[s][u];
-					else
-						_cur_stk.slot_size[s][u] = 0;
-				}
-			}
-			else
-			{
-				for (int u = 0; u < UNROLL_SIZE(_k); u++)
-				{
-					_cur_stk.slot_size[s][u] = _target_stk.slot_size[s][u];
-				}
-			}
-		}
 
-		_cur_stk.uiter[_k] = _target_stk.uiter[_k];
 		_cur_stk.iter[_k] = stealed_start_idx_in_target;
-		_target_stk.slot_size[_pat->rowptr[_k]][_target_stk.uiter[_k]] = stealed_start_idx_in_target;
+		_target_stk.slot_size[_k] = stealed_start_idx_in_target;
 		// copy
 		for (int l = _k + 1; l < _pat->nnodes - 1; l++)
 		{
 			_cur_stk.iter[l] = 0;
-			_cur_stk.uiter[l] = 0;
-			for (int s = _pat->rowptr[l]; s < _pat->rowptr[l + 1]; s++)
-			{
-				for (int u = 0; u < UNROLL_SIZE(l); u++)
-				{
-					_cur_stk.slot_size[s][u] = 0;
-				}
-			}
+			_cur_stk.slot_size[l] = 0;
 		}
 		_cur_stk.iter[_pat->nnodes - 1] = 0;
-		_cur_stk.uiter[_pat->nnodes - 1] = 0;
-		for (int u = 0; u < UNROLL_SIZE(_pat->nnodes - 1); u++)
-		{
-			_cur_stk.slot_size[_pat->rowptr[_pat->nnodes - 1]][u] = 0;
-		}
+		_cur_stk.slot_size[_pat->nnodes - 1] = 0;
+	
 		_cur_stk.level = _k + 1;
 		return true;
 	}
@@ -149,13 +88,12 @@ namespace STMatch
 		{
 			for (int i = 0; i < NWARPS_PER_BLOCK; i++)
 			{
-
 				if (i == threadIdx.x / WARP_SIZE)
 					continue;
 				lock(&(_stealing_args->local_mutex[i]));
 
-				int left_task = _all_stk[i].slot_size[pat->rowptr[level]][_all_stk[i].uiter[level]] -
-								(_all_stk[i].iter[level] + _all_stk[i].uiter[level + 1] + 1);
+				int left_task = _all_stk[i].slot_size[level] -
+								(_all_stk[i].iter[level] + 1);
 				if (left_task > max_left_task)
 				{
 					max_left_task = left_task;
