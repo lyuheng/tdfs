@@ -316,14 +316,6 @@ namespace STMatch
 		return index;
 	}
 
-	__forceinline__ __device__ bool check_validity(Arg_t *arg, CallStack *stk, int target)
-	{
-	
-	
-		return pred;
-	}
-
-
 	__forceinline__ __device__ void compute_intersection(Arg_t *arg, CallStack *stk)
 	{
 		int res_length = 0;
