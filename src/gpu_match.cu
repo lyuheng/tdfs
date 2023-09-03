@@ -424,7 +424,7 @@ namespace STMatch
 
 			int actual_lvl = level + 1;
 			
-			if (pat->num_BN[actual_lvl] == 0)
+			if (pat->num_BN[actual_lvl] == 0 || pat->num_BN[actual_lvl] == 1)
 				assert(false);
 			else
 			{
