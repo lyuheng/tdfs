@@ -451,9 +451,6 @@ namespace STMatch
 					BN = pat->backward_neighbors[actual_lvl][i];
 					t = path(stk, pat, BN - 1);
 
-					if (LANEID == 0) 
-						printf("t = %d\n", t);
-						
 					int* neighbor = &g->colidx[g->rowptr[t]];
 					int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
 
@@ -465,6 +462,8 @@ namespace STMatch
 					arg[wid].res_size = &(stk->slot_size[level]);
 
 					compute_intersection(&arg[wid], stk);
+
+					printf("res_size = %d\n", arg[wid].res_size);
 				}
 			}
 		}
