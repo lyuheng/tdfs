@@ -366,7 +366,6 @@ namespace STMatch
 			else
 			{
 				int BN = pat->backward_neighbors[actual_lvl][0];
-				assert(BN == 0 || BN == 1);
 				graph_node_t t = path(stk, pat, BN - 1);
 				int i_min = 0;
 				int t_min = t;
