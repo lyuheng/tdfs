@@ -14,8 +14,8 @@ namespace STMatch {
 
 #include "config_for_ae/fig_local_global_unroll.h" 
 
-  inline constexpr int GRID_DIM = 1;
-  inline constexpr int BLOCK_DIM = 32;
+  inline constexpr int GRID_DIM = 108;
+  inline constexpr int BLOCK_DIM = 1024;
   inline constexpr int WARP_SIZE = 32;
   inline constexpr int NWARPS_PER_BLOCK = (BLOCK_DIM / WARP_SIZE);
   inline constexpr int NWARPS_TOTAL = ((GRID_DIM * BLOCK_DIM + WARP_SIZE - 1) / WARP_SIZE);
