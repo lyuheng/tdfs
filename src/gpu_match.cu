@@ -273,13 +273,13 @@ namespace STMatch
 					int cond_lvl = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k + 1];
 					int cond_vertex_M = path(stk, arg->pat, cond_lvl - 1);
 					if (cond == CondOperator::LESS_THAN) {
-						if (cond_vertex_M >= target) {
+						if (cond_vertex_M <= target) {
 							pred = false;
 							break;
 						}
 					}
 					else if (cond == CondOperator::LARGER_THAN) {
-						if (cond_vertex_M <= target) {
+						if (cond_vertex_M >= target) {
 							pred = false;
 							break;
 						}
