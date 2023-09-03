@@ -90,7 +90,7 @@ int main(int argc, char* argv[]) {
   unsigned long long tot_count = 0;
   for (int i=0; i<NWARPS_TOTAL; i++) tot_count += res[i];
 
-  if(!LABELED) tot_count = tot_count * p.PatternMultiplicity;
+  // if(!LABELED) tot_count = tot_count * p.PatternMultiplicity;
   
   printf("%s\t%f\t%llu\n", argv[2], milliseconds, tot_count);
   //cout << "count: " << tot_count << endl;
