@@ -371,18 +371,18 @@ namespace STMatch
 				int t_min = t;
 				int min_neighbor = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
 
-				for (int i = 1; i < pat->num_BN[actual_lvl]; ++i)
-				{
-					BN = pat->backward_neighbors[actual_lvl][i];
-					t = path(stk, pat, BN - 1);
-					int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
-					if (neighbor_cnt < min_neighbor)
-					{
-						i_min = i;
-						t_min = t;
-						min_neighbor = neighbor_cnt;
-					}
-				}
+				// for (int i = 1; i < pat->num_BN[actual_lvl]; ++i)
+				// {
+				// 	BN = pat->backward_neighbors[actual_lvl][i];
+				// 	t = path(stk, pat, BN - 1);
+				// 	int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
+				// 	if (neighbor_cnt < min_neighbor)
+				// 	{
+				// 		i_min = i;
+				// 		t_min = t;
+				// 		min_neighbor = neighbor_cnt;
+				// 	}
+				// }
 				arr_copy(stk->slot_storage[level], &g->colidx[g->rowptr[t_min]], min_neighbor);
 				stk->slot_size[level] = min_neighbor;
 
