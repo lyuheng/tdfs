@@ -508,6 +508,7 @@ namespace STMatch
 				else
 				{
 					stk->slot_size[level] = 0;
+					stk->iter[level] = 0;
 					if (level > 0)
 					{
 						if (threadIdx.x % WARP_SIZE == 0)
