@@ -22,6 +22,8 @@ namespace STMatch {
 
 
     JobQueuePreprocessor(Graph& g, PatternPreprocessor& p) {
+
+      std::cout << "start JobQueuePreprocessor..." << std::endl;
       std::vector<graph_node_t> vr, vc;
       long cnt = 0;
       for (graph_node_t r = 0; r < g.nnodes; r++) {
@@ -58,7 +60,6 @@ namespace STMatch {
       q.length = vr.size();
       q.cur = 0;
       q.start_level = 2;
-
     }
 
     JobQueue* to_gpu() {
