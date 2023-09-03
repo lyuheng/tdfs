@@ -16,11 +16,11 @@ int main(int argc, char* argv[]) {
 
 
   std::cout << "conditions: " << std::endl;
-  for (int i = 0; i < p.order.size(); i++) 
+  for (int i = 0; i < p.order_.size(); i++) 
   {
       std::cout << i << ": ";
-      for (int j = 0; j < p.order[i].size(); j++)
-          std::cout << GetCondOperatorString(p.order[i][j].first) << "(" << p.order[i][j].second << "), ";
+      for (int j = 0; j < p.order_[i].size(); j++)
+          std::cout << GetCondOperatorString(p.order_[i][j].first) << "(" << p.order_[i][j].second << "), ";
       std::cout << std::endl;
   }
 
