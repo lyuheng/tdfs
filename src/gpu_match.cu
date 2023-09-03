@@ -463,7 +463,7 @@ namespace STMatch
 
 					compute_intersection(&arg[wid], stk);
 
-					printf("res_size = %d\n", arg[wid].res_size);
+					printf("res_size = %d\n", stk->slot_size[level]);
 				}
 			}
 		}
