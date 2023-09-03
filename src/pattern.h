@@ -10,6 +10,7 @@
 #include <map>
 #include <string>
 #include <set>
+#include <unordered_set>
 #include <cassert>
 #include <utility>
 #include "config.h"
