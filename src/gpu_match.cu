@@ -389,8 +389,7 @@ namespace STMatch
 				for (int i = 0; i < pat->num_BN[actual_lvl]; ++i)
 				{
 					if (i == i_min) continue;
-					bool last_round == (i == pat->num_BN[actual_lvl] - 1) || 
-							(i == pat->num_BN[actual_lvl] - 2 && i_min == pat->num_BN[actual_lvl] - 1);
+					bool last_round = (i == pat->num_BN[actual_lvl] - 1) || (i == pat->num_BN[actual_lvl] - 2 && i_min == pat->num_BN[actual_lvl] - 1);
 
 					BN = pat->backward_neighbors[actual_lvl][i];
 					t = path(stk, pat, BN - 1);
