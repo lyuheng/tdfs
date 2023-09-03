@@ -373,13 +373,11 @@ namespace STMatch
 		*arg->res_size = res_length;
 	}
 
-	__forceinline__ __device__ void arr_copy(int* dst, int* src, int len, CallStack *stk, Arg_t *arg)
+	__forceinline__ __device__ void arr_copy(int* dst, int* src, int len)
 	{
 		for (int i = LANEID; i < len; i += WARP_SIZE)
 		{
-			int target = src[i];
-			bool pred = check_validity(arg, stk, target);
-			if (pred) dst[i] = target;
+			dst[i] = src[i];
 		}
 	}
 
@@ -456,7 +454,7 @@ namespace STMatch
 						min_neighbor = neighbor_cnt;
 					}
 				}
-				arr_copy(stk->slot_storage[level], &g->colidx[g->rowptr[t_min]], min_neighbor, stk, arg);
+				arr_copy(stk->slot_storage[level], &g->colidx[g->rowptr[t_min]], min_neighbor);
 				stk->slot_size[level] = min_neighbor;
 
 				for (int i = 0; i < pat->num_BN[actual_lvl]; ++i)
