@@ -93,7 +93,7 @@ namespace STMatch
 					continue;
 				lock(&(_stealing_args->local_mutex[i]));
 
-				int left_task = _all_stk[i].slot_size[level] - _all_stk[i].iter[level] + 1);
+				int left_task = _all_stk[i].slot_size[level] - (_all_stk[i].iter[level] + 1);
 				if (left_task > max_left_task)
 				{
 					max_left_task = left_task;
