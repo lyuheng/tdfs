@@ -7,9 +7,13 @@
 #include <iostream>
 #include <algorithm>
 #include <vector>
+#include <map>
+#include <string>
 #include <set>
 #include <cassert>
+#include <utility>
 #include "config.h"
+#include "../bliss/graph.hh"
 
 namespace STMatch {
 
@@ -51,6 +55,11 @@ enum CondOperator { LESS_THAN = 0, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
 
     int length[PAT_SIZE];
     int edge[PAT_SIZE][PAT_SIZE];
+
+    typedef std::pair<CondOperator, int> CondType;
+    typedef std::vector<std::vector<CondType>> AllCondType;
+
+    AllCondType order_;
 
     PatternPreprocessor(std::string filename) {
       readfile(filename);
@@ -448,6 +457,146 @@ enum CondOperator { LESS_THAN = 0, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
       }
       //std::cout << "total number of slots: " << count << std::endl;
       assert(count <= MAX_SLOT_NUM);
+    }
+
+    bliss::Graph* GetBlissGraph()
+    {
+      bliss::Graph* bg = new bliss::Graph(pat.nnodes);
+      for (int i = 0; i < pat.nnodes; i++)
+      {
+        for (int j = 0; j < pat.nnodes; ++j) {
+          if (adj_matrix_[i][j] > 0)
+          {
+            bg->add_edge(i, j);
+          }
+        }
+      }
+      return bg;
+    }
+
+    std::string OrderToString(const std::vector<int>& p) {
+      std::string res;
+      for (auto v : p)
+        res += std::to_string(v);
+      return res;
+    }
+
+    void CompleteAutomorphisms(std::vector<std::vector<int>>& perm_group) 
+    {
+        // multiplying std::vector<uint32_t>s is just function composition: (p1*p2)[i] = p1[p2[i]]
+        std::vector<std::vector<int>> products;
+        // for filtering duplicates
+        std::unordered_set<std::string> dups;
+        for (auto f : perm_group)
+          dups.insert(OrderToString(f));
+
+        for (auto k = perm_group.begin(); k != perm_group.end(); k++) 
+        {
+          for (auto l = perm_group.begin(); l != perm_group.end(); l++) 
+          {
+            std::vector<int> p1 = *k;
+            std::vector<int> p2 = *l;
+
+            std::vector<int> product;
+            product.resize(p1.size());
+            for (int i = 0; i < product.size(); i++)
+                product[i] = p1[p2[i]];
+
+            // don't count duplicates
+            if (dups.count(OrderToString(product)) == 0) 
+            {
+                dups.insert(OrderToString(product));
+                products.push_back(product);
+            }
+          }
+        }
+
+        for (auto p : products)
+          perm_group.push_back(p);
+    }
+
+    std::vector<std::vector<int>> GetAutomorphisms(bliss::Graph* bg)
+    {
+        std::vector<std::vector<int>> result;
+        bliss::Stats stats;
+        bg->find_automorphisms(
+            stats,
+            [](void* param, const int size, const int* aut) {
+                std::vector<int> result_aut;
+                for (int i = 0; i < size; i++)
+                    result_aut.push_back(aut[i]);
+                ((std::vector<std::vector<int>>*)param)->push_back(result_aut);
+            },
+            &result);
+
+        int counter = 0;
+        int lastSize = 0;
+        while (result.size() != lastSize) 
+        {
+            lastSize = result.size();
+            CompleteAutomorphisms(result);
+            counter++;
+            if (counter > 100)
+                break;
+        }
+
+        return result;
+    }
+
+    std::map<int, std::set<int>> GetAEquivalenceClasses(const std::vector<std::vector<int>>& aut) 
+    {
+      std::map<int, std::set<int>> eclasses;
+      for (int i = 0; i < pat->nnodes; i++) 
+      {
+          std::set<int> eclass;
+          for (auto&& perm : aut)
+            eclass.insert(perm[i]);
+          int rep = *std::min_element(eclass.cbegin(), eclass.cend());
+          eclasses[rep].insert(eclass.cbegin(), eclass.cend());
+      }
+      return eclasses;
+    }
+
+    std::vector<std::pair<int, int>> GetConditions(bliss::Graph* bg)
+    {
+        std::vector<std::vector<int>> aut = GetAutomorphisms(bg);
+        std::map<int, std::set<int>> eclasses = GetAEquivalenceClasses(aut);
+
+        std::vector<std::pair<int, int>> result;
+        auto eclass_it = std::find_if(eclasses.cbegin(), eclasses.cend(), [](auto&& e) { return e.second.size() > 1; });
+        while (eclass_it != eclasses.cend() && eclass_it->second.size() > 1) 
+        {
+            const auto& eclass = eclass_it->second;
+            int n0 = *eclass.cbegin();
+
+            for (auto&& perm : aut)
+            {
+                int min = *std::min_element(std::next(eclass.cbegin()), eclass.cend(), [perm](int n, int m) { return perm[n] < perm[m]; });
+                result.emplace_back(n0, min);
+            }
+            aut.erase(std::remove_if(aut.begin(), aut.end(), [n0](auto&& perm) { return perm[n0] != n0; }), aut.end());
+
+            eclasses = GetAEquivalenceClasses(aut);
+            eclass_it = std::find_if(eclasses.cbegin(), eclasses.cend(), [](auto&& e) { return e.second.size() > 1; });
+        }
+
+        // remove duplicate conditions
+        std::sort(result.begin(), result.end());
+        result.erase(std::unique(result.begin(), result.end()), result.end());
+
+        return result;
+    }
+
+    void SetConditions(const std::vector<std::pair<int, int>>& conditions) 
+    {
+        order_.resize(pat->nnodes);
+        for (int i = 0; i < conditions.size(); i++) 
+        {
+            int first = conditions[i].first;
+            int second = conditions[i].second;
+            order_[first].push_back(std::make_pair(LESS_THAN, second));
+            order_[second].push_back(std::make_pair(LARGER_THAN, first));
+        }
     }
   };
 }

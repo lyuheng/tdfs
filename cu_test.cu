@@ -12,6 +12,8 @@ int main(int argc, char* argv[]) {
   STMatch::GraphPreprocessor g(argv[1]);
   STMatch::PatternPreprocessor p(argv[2]);
 
+  p.SetConditions(p.GetConditions(p.GetBlissGraph()));
+
   // copy graph and pattern to GPU global memory
   Graph* gpu_graph = g.to_gpu();
   Pattern* gpu_pattern = p.to_gpu();
