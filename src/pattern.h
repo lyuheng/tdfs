@@ -20,6 +20,24 @@ namespace STMatch {
 
 enum CondOperator { LESS_THAN = 0, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
 
+
+inline std::string GetCondOperatorString(const CondOperator& op) {
+  std::string ret = "";
+  switch (op) {
+      case LESS_THAN:
+          ret = "LESS_THAN";
+          break;
+      case LARGER_THAN:
+          ret = "LAGER_THAN";
+          break;
+      case NON_EQUAL:
+          ret = "NON_EQUAL";
+          break;
+      default:
+          break;
+}
+   
+
   typedef struct {
 
     pattern_node_t nnodes = 0;

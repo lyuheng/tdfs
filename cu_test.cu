@@ -14,6 +14,16 @@ int main(int argc, char* argv[]) {
 
   p.SetConditions(p.GetConditions(p.GetBlissGraph()));
 
+
+  std::cout << "conditions: " << std::endl;
+  for (int i = 0; i < p.order.size(); i++) 
+  {
+      std::cout << i << ": ";
+      for (int j = 0; j < p.order[i].size(); j++)
+          std::cout << GetCondOperatorString(p.order[i][j].first) << "(" << p.order[i][j].second << "), ";
+      std::cout << std::endl;
+  }
+
   // copy graph and pattern to GPU global memory
   Graph* gpu_graph = g.to_gpu();
   Pattern* gpu_pattern = p.to_gpu();
