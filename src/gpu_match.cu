@@ -329,7 +329,7 @@ namespace STMatch
 			if (il < arg->set2_size)
 			{
 				pred = true;
-				target = arg->set2[i];
+				target = arg->set2[il];
 				for (int k = 0; k < arg->pat->condition_cnt[actual_lvl]; ++k)
 				{
 					int cond = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k];
@@ -462,9 +462,6 @@ namespace STMatch
 					arg[wid].res_size = &(stk->slot_size[level]);
 
 					compute_intersection(&arg[wid], stk);
-
-					if (LANEID == 0 )
-						printf("res_size = %d\n", stk->slot_size[level]);
 				}
 			}
 		}
