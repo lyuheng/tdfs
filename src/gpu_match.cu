@@ -453,6 +453,7 @@ namespace STMatch
 
 					if (LANEID == 0) 
 						printf("t = %d\n", t);
+						
 					int* neighbor = &g->colidx[g->rowptr[t]];
 					int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
 
