@@ -253,7 +253,7 @@ namespace STMatch
 		return index;
 	}
 
-	__forceinline__ __device__ void compute_intersection(Arg_t *arg, CallStack *stk)
+	__forceinline__ __device__ void compute_intersection(Arg_t *arg, CallStack *stk, bool last_round)
 	{
 		int res_length = 0;
 		int actual_lvl = arg->level + 1;
@@ -294,7 +294,7 @@ namespace STMatch
 				if (pred) pred = bsearch_exist(arg->set1, arg->set1_size, target);
 			}
 			int loc = scanIndex(pred) + res_length;
-			if (pred) 
+			if (arg->level < arg->pat->nnodes - 2 && last_round && pred)
 				arg->res[loc] = target;
 			if (threadIdx.x % WARP_SIZE == 31) // last lane's loc+pred is number of items found in this scan
 				res_length = loc + pred;
@@ -371,24 +371,26 @@ namespace STMatch
 				int t_min = t;
 				int min_neighbor = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
 
-				// for (int i = 1; i < pat->num_BN[actual_lvl]; ++i)
-				// {
-				// 	BN = pat->backward_neighbors[actual_lvl][i];
-				// 	t = path(stk, pat, BN - 1);
-				// 	int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
-				// 	if (neighbor_cnt < min_neighbor)
-				// 	{
-				// 		i_min = i;
-				// 		t_min = t;
-				// 		min_neighbor = neighbor_cnt;
-				// 	}
-				// }
+				for (int i = 1; i < pat->num_BN[actual_lvl]; ++i)
+				{
+					BN = pat->backward_neighbors[actual_lvl][i];
+					t = path(stk, pat, BN - 1);
+					int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
+					if (neighbor_cnt < min_neighbor)
+					{
+						i_min = i;
+						t_min = t;
+						min_neighbor = neighbor_cnt;
+					}
+				}
 				arr_copy(stk->slot_storage[level], &g->colidx[g->rowptr[t_min]], min_neighbor);
 				stk->slot_size[level] = min_neighbor;
 
 				for (int i = 0; i < pat->num_BN[actual_lvl]; ++i)
 				{
 					if (i == i_min) continue;
+					bool last_round == (i == pat->num_BN[actual_lvl] - 1) || 
+							(i == pat->num_BN[actual_lvl] - 2 && i_min == pat->num_BN[actual_lvl] - 1);
 
 					BN = pat->backward_neighbors[actual_lvl][i];
 					t = path(stk, pat, BN - 1);
@@ -403,7 +405,7 @@ namespace STMatch
 					arg[wid].res = stk->slot_storage[level];
 					arg[wid].res_size = &(stk->slot_size[level]);
 
-					compute_intersection(&arg[wid], stk);
+					compute_intersection(&arg[wid], stk, last_round);
 				}
 			}
 		}
