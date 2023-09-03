@@ -335,6 +335,7 @@ namespace STMatch
 					int cond = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k];
 					int cond_lvl = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k + 1];
 					int cond_vertex_M = path(stk, arg->pat, cond_lvl - 1);
+					assert(cond_vertex_M >= 0);
 					if (cond == CondOperator::NON_EQUAL)
 					{
 						if (cond_vertex_M == target)
@@ -361,7 +362,7 @@ namespace STMatch
 
 	__forceinline__ __device__ void arr_copy(int* dst, int* src, int len)
 	{
-		for (int i = threadIdx.x % WARP_SIZE; i < len; i += WARP_SIZE)
+		for (int i = LANEID; i < len; i += WARP_SIZE)
 		{
 			dst[i] = src[i];
 		}
