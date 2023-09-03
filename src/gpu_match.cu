@@ -316,6 +316,42 @@ namespace STMatch
 		return index;
 	}
 
+	__forceinline__ __device__ bool check_validity(Arg_t *arg, CallStack *stk, int target)
+	{
+		int actual_lvl = arg->level + 1;
+		bool pred = true;
+		for (int k = 0; k < arg->pat->condition_cnt[actual_lvl]; ++k)
+		{
+			int cond = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k];
+			int cond_lvl = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k + 1];
+			int cond_vertex_M = path(stk, arg->pat, cond_lvl - 1);
+			if (cond == CondOperator::LESS_THAN) {
+				if (cond_vertex_M <= target) {
+					pred = false;
+					break;
+				}
+			}
+			else if (cond == CondOperator::LARGER_THAN) {
+				if (cond_vertex_M >= target) {
+					pred = false;
+					break;
+				}
+			}
+			else if (cond == CondOperator::NON_EQUAL) {
+				if (cond_vertex_M == target) {
+					pred = false;
+					break;
+				}
+			}
+		}
+		if (pred)
+		{
+			pred = bsearch_exist(arg->set1, arg->set1_size, target);
+		}
+		return pred;
+	}
+
+
 	__forceinline__ __device__ void compute_intersection(Arg_t *arg, CallStack *stk)
 	{
 		int res_length = 0;
@@ -328,37 +364,8 @@ namespace STMatch
 			int il = i + LANEID;
 			if (il < arg->set2_size)
 			{
-				pred = true;
 				target = arg->set2[il];
-				for (int k = 0; k < arg->pat->condition_cnt[actual_lvl]; ++k)
-				{
-					int cond = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k];
-					int cond_lvl = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k + 1];
-					int cond_vertex_M = path(stk, arg->pat, cond_lvl - 1);
-					assert(cond_vertex_M >= 0);
-					if (cond == CondOperator::LESS_THAN) {
-						if (cond_vertex_M <= target) {
-							pred = false;
-							break;
-						}
-					}
-					else if (cond == CondOperator::LARGER_THAN) {
-						if (cond_vertex_M >= target) {
-							pred = false;
-							break;
-						}
-					}
-					else if (cond == CondOperator::NON_EQUAL) {
-						if (cond_vertex_M == target) {
-							pred = false;
-							break;
-						}
-					}
-				}
-				if (pred)
-				{
-					pred = bsearch_exist(arg->set1, arg->set1_size, target);
-				}
+				pred = check_validity(arg, target);
 			}
 			int loc = scanIndex(pred) + res_length;
 			if (arg->level < arg->pat->nnodes - 2 && pred) 
@@ -370,11 +377,13 @@ namespace STMatch
 		*arg->res_size = res_length;
 	}
 
-	__forceinline__ __device__ void arr_copy(int* dst, int* src, int len)
+	__forceinline__ __device__ void arr_copy(int* dst, int* src, int len, CallStack *stk)
 	{
 		for (int i = LANEID; i < len; i += WARP_SIZE)
 		{
-			dst[i] = src[i];
+			int target = src[i];
+			bool pred = check_validity(arg, stk, target);
+			if (pred) dst[i] = target;
 		}
 	}
 
@@ -451,7 +460,7 @@ namespace STMatch
 						min_neighbor = neighbor_cnt;
 					}
 				}
-				arr_copy(stk->slot_storage[level], &g->colidx[g->rowptr[t_min]], min_neighbor);
+				arr_copy(stk->slot_storage[level], &g->colidx[g->rowptr[t_min]], min_neighbor, stk);
 				stk->slot_size[level] = min_neighbor;
 
 				for (int i = 0; i < pat->num_BN[actual_lvl]; ++i)
