@@ -338,7 +338,7 @@ namespace STMatch
 					assert(cond_vertex_M >= 0);
 					if (cond == CondOperator::NON_EQUAL)
 					{
-						if (cond_vertex_M == target)
+						if (cond_vertex_M >= target)
 						{
 							pred = false;
 							break;
