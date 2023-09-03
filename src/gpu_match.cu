@@ -329,7 +329,7 @@ namespace STMatch
 			if (il < arg->set2_size)
 			{
 				pred = true;
-				int target = arg->set2[i];
+				target = arg->set2[i];
 				for (int k = 0; k < arg->pat->condition_cnt[actual_lvl]; ++k)
 				{
 					int cond = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k];
@@ -446,7 +446,7 @@ namespace STMatch
 				{
 					if (i == i_min) continue;
 
-					int BN = pat->backward_neighbors[actual_lvl][i];
+					BN = pat->backward_neighbors[actual_lvl][i];
 					t = path(stk, pat, BN - 1);
 					int* neighbor = &g->colidx[g->rowptr[t]];
 					int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
