@@ -463,7 +463,8 @@ namespace STMatch
 
 					compute_intersection(&arg[wid], stk);
 
-					printf("res_size = %d\n", stk->slot_size[level]);
+					if (LANEID == 0 )
+						printf("res_size = %d\n", stk->slot_size[level]);
 				}
 			}
 		}
