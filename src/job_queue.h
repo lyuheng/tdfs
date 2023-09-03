@@ -5,7 +5,7 @@
 namespace STMatch {
 
   typedef struct {
-    graph_node_t nodes[PAT_SIZE];
+    graph_node_t nodes[2];
   } Job;
 
   typedef struct {
