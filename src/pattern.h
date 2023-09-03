@@ -36,6 +36,7 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
     default:
         break;
   }
+  return ret;
 }
    
 
