@@ -344,10 +344,6 @@ namespace STMatch
 				}
 			}
 		}
-		if (pred)
-		{
-			pred = bsearch_exist(arg->set1, arg->set1_size, target);
-		}
 		return pred;
 	}
 
@@ -357,7 +353,6 @@ namespace STMatch
 		int res_length = 0;
 		bool pred;
 		int target;
-		int actual_lvl = arg->level + 1;
 		for (int i = 0; i < arg->set2_size; i += WARP_SIZE)
 		{
 			pred = false;
@@ -365,7 +360,8 @@ namespace STMatch
 			if (il < arg->set2_size)
 			{
 				target = arg->set2[il];
-				pred = check_validity(arg, target);
+				pred = check_validity(arg, stk, target);
+				if (pred) pred = bsearch_exist(arg->set1, arg->set1_size, target);
 			}
 			int loc = scanIndex(pred) + res_length;
 			if (arg->level < arg->pat->nnodes - 2 && pred) 
@@ -377,7 +373,7 @@ namespace STMatch
 		*arg->res_size = res_length;
 	}
 
-	__forceinline__ __device__ void arr_copy(int* dst, int* src, int len, CallStack *stk)
+	__forceinline__ __device__ void arr_copy(int* dst, int* src, int len, CallStack *stk, Arg_t *arg)
 	{
 		for (int i = LANEID; i < len; i += WARP_SIZE)
 		{
@@ -460,7 +456,7 @@ namespace STMatch
 						min_neighbor = neighbor_cnt;
 					}
 				}
-				arr_copy(stk->slot_storage[level], &g->colidx[g->rowptr[t_min]], min_neighbor, stk);
+				arr_copy(stk->slot_storage[level], &g->colidx[g->rowptr[t_min]], min_neighbor, stk, arg);
 				stk->slot_size[level] = min_neighbor;
 
 				for (int i = 0; i < pat->num_BN[actual_lvl]; ++i)
