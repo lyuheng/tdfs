@@ -318,32 +318,8 @@ namespace STMatch
 
 	__forceinline__ __device__ bool check_validity(Arg_t *arg, CallStack *stk, int target)
 	{
-		int actual_lvl = arg->level + 1;
-		bool pred = true;
-		for (int k = 0; k < arg->pat->condition_cnt[actual_lvl]; ++k)
-		{
-			int cond = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k];
-			int cond_lvl = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k + 1];
-			int cond_vertex_M = path(stk, arg->pat, cond_lvl - 1);
-			if (cond == CondOperator::LESS_THAN) {
-				if (cond_vertex_M <= target) {
-					pred = false;
-					break;
-				}
-			}
-			else if (cond == CondOperator::LARGER_THAN) {
-				if (cond_vertex_M >= target) {
-					pred = false;
-					break;
-				}
-			}
-			else if (cond == CondOperator::NON_EQUAL) {
-				if (cond_vertex_M == target) {
-					pred = false;
-					break;
-				}
-			}
-		}
+	
+	
 		return pred;
 	}
 
@@ -351,6 +327,7 @@ namespace STMatch
 	__forceinline__ __device__ void compute_intersection(Arg_t *arg, CallStack *stk)
 	{
 		int res_length = 0;
+		int actual_lvl = arg->level + 1;
 		bool pred;
 		int target;
 		for (int i = 0; i < arg->set2_size; i += WARP_SIZE)
@@ -359,8 +336,32 @@ namespace STMatch
 			int il = i + LANEID;
 			if (il < arg->set2_size)
 			{
+				pred = true;
 				target = arg->set2[il];
-				pred = check_validity(arg, stk, target);
+				for (int k = 0; k < arg->pat->condition_cnt[actual_lvl]; ++k)
+				{
+					int cond = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k];
+					int cond_lvl = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k + 1];
+					int cond_vertex_M = path(stk, arg->pat, cond_lvl - 1);
+					if (cond == CondOperator::LESS_THAN) {
+						if (cond_vertex_M <= target) {
+							pred = false;
+							break;
+						}
+					}
+					else if (cond == CondOperator::LARGER_THAN) {
+						if (cond_vertex_M >= target) {
+							pred = false;
+							break;
+						}
+					}
+					else if (cond == CondOperator::NON_EQUAL) {
+						if (cond_vertex_M == target) {
+							pred = false;
+							break;
+						}
+					}
+				}
 				if (pred) pred = bsearch_exist(arg->set1, arg->set1_size, target);
 			}
 			int loc = scanIndex(pred) + res_length;
