@@ -334,7 +334,7 @@ namespace STMatch
 				{
 					int cond = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k];
 					int cond_lvl = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k + 1];
-					int cond_vertex_M = path(stk, arg->pat, cond_lvl - 2);
+					int cond_vertex_M = path(stk, arg->pat, cond_lvl - 1);
 					if (cond == CondOperator::NON_EQUAL)
 					{
 						if (cond_vertex_M == target)
@@ -429,7 +429,7 @@ namespace STMatch
 
 				for (int i = 1; i < pat->num_BN[actual_lvl]; ++i)
 				{
-					int BN = pat->backward_neighbors[actual_lvl][i];
+					BN = pat->backward_neighbors[actual_lvl][i];
 					t = path(stk, pat, BN - 1);
 					int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
 					if (neighbor_cnt < min_neighbor)
