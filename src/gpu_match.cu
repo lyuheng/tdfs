@@ -26,7 +26,7 @@ namespace STMatch
 	{
 		atomicExch((int *)mutex, 0);
 	}
-	/*
+	
 	__device__ bool trans_layer(CallStack &_target_stk, CallStack &_cur_stk, Pattern *_pat, int _k, int ratio = 2)
 	{
 		if (_target_stk.level <= _k)
@@ -181,7 +181,6 @@ namespace STMatch
 		}
 		return false;
 	}
-	*/
 
 	__forceinline__ __device__ graph_node_t path(CallStack *stk, Pattern *pat, int level)
 	{
@@ -531,11 +530,11 @@ namespace STMatch
 
 		while (true)
 		{
-			// if (threadIdx.x % WARP_SIZE == 0)
-			// {
-			// 	lock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
-			// }
-			// __syncwarp();
+			if (threadIdx.x % WARP_SIZE == 0)
+			{
+				lock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
+			}
+			__syncwarp();
 
 			if (level < pat->nnodes - 2)
 			{
@@ -550,9 +549,9 @@ namespace STMatch
 					extend(g, pat, stk, q, level);
 					if (level == 0 && stk->slot_size[0] == 0)
 					{
-						// if (threadIdx.x % WARP_SIZE == 0)
-						// 	unlock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
-						// __syncwarp();
+						if (threadIdx.x % WARP_SIZE == 0)
+							unlock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
+						__syncwarp();
 						break;
 					}
 				}
@@ -595,8 +594,8 @@ namespace STMatch
 				__syncwarp();
 			}
 			//__syncwarp();
-			// if (threadIdx.x % WARP_SIZE == 0)
-			// 	unlock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
+			if (threadIdx.x % WARP_SIZE == 0)
+				unlock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
 			__syncwarp();
 		}
 	}
@@ -655,7 +654,7 @@ namespace STMatch
 
 			stealed[local_wid] = false;
 
-			/*
+			
 			if (STEAL_IN_BLOCK)
 			{
 				if (threadIdx.x % WARP_SIZE == 0)
@@ -665,6 +664,7 @@ namespace STMatch
 				__syncwarp();
 			}
 
+			/*
 			if (STEAL_ACROSS_BLOCK)
 			{
 				if (!stealed[local_wid])
