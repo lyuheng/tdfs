@@ -29,7 +29,7 @@ namespace STMatch {
       for (graph_node_t r = 0; r < g.nnodes; r++) {
         for (graph_edge_t j = g.rowptr[r]; j < g.rowptr[r + 1]; j++) {
           graph_node_t c = g.colidx[j];
-          if ((!LABELED && p.partial[0][0] == 1 && r > c) || LABELED || p.partial[0][0] != 1) {
+          if ((!LABELED && p.partial[0][0] == 1 && r < c) || LABELED || p.partial[0][0] != 1) {
             if ((g.vertex_label[r] == (1 << p.vertex_labels[0])) && (g.vertex_label[c] == (1 << p.vertex_labels[1]))) {
               if (g.rowptr[r + 1] - g.rowptr[r] >= p.pat.degree[0] && g.rowptr[c + 1] - g.rowptr[c] >= p.pat.degree[1]) {
                 bool valid = false;

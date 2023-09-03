@@ -12,8 +12,6 @@ int main(int argc, char* argv[]) {
   STMatch::GraphPreprocessor g(argv[1]);
   STMatch::PatternPreprocessor p(argv[2]);
 
-  p.SetConditions(p.GetConditions(p.GetBlissGraph()));
-
 
   std::cout << "conditions: " << std::endl;
   for (int i = 0; i < p.order_.size(); i++) 

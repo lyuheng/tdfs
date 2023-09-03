@@ -84,6 +84,7 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
 
     PatternPreprocessor(std::string filename) {
       readfile(filename);
+      SetConditions(GetConditions(GetBlissGraph())); // set order_
       get_matching_order();
       get_partial_order();
       get_set_ops();
@@ -359,6 +360,7 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
 
       memset(pat.condition_order, 0, sizeof(pat.condition_order));
       memset(pat.condition_cnt, 0, sizeof(pat.condition_cnt));
+      bool skip;
       for (int i = 0; i < pat.nnodes; ++i) // idx
       {
         int index = i * PAT_SIZE * 2;
@@ -366,10 +368,26 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
         {
           if (i > j)
           {
-            pat.condition_order[index] = CondOperator::NON_EQUAL;
-            pat.condition_order[index + 1] = j;
-            pat.condition_cnt[i] += 1;
-            index += 2;
+            skip = false;
+            for (int k = 0; k < order_[order_map_[i]].size(); ++k)
+            {
+              if (order_[order_map_[i]][k].second == j)
+              {
+                pat.condition_order[index] = order_[order_map_[i]][k].first;
+                pat.condition_order[index + 1] = j;
+                pat.condition_cnt[i] += 1;
+                index += 2;
+                skip = true;
+                break;
+              }
+            }
+            if (!skip) 
+            {
+              pat.condition_order[index] = CondOperator::NON_EQUAL;
+              pat.condition_order[index + 1] = j;
+              pat.condition_cnt[i] += 1;
+              index += 2;
+            }
           }
         }
       }
