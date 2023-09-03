@@ -547,7 +547,7 @@ enum CondOperator { LESS_THAN = 0, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
     std::map<int, std::set<int>> GetAEquivalenceClasses(const std::vector<std::vector<int>>& aut) 
     {
       std::map<int, std::set<int>> eclasses;
-      for (int i = 0; i < pat->nnodes; i++) 
+      for (int i = 0; i < pat.nnodes; i++) 
       {
           std::set<int> eclass;
           for (auto&& perm : aut)
@@ -590,7 +590,7 @@ enum CondOperator { LESS_THAN = 0, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
 
     void SetConditions(const std::vector<std::pair<int, int>>& conditions) 
     {
-        order_.resize(pat->nnodes);
+        order_.resize(pat.nnodes);
         for (int i = 0; i < conditions.size(); i++) 
         {
             int first = conditions[i].first;
