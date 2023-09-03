@@ -522,7 +522,7 @@ enum CondOperator { LESS_THAN = 0, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
         bliss::Stats stats;
         bg->find_automorphisms(
             stats,
-            [](void* param, const int size, const int* aut) {
+            [](void* param, const unsigned int size, const unsigned int* aut) {
                 std::vector<int> result_aut;
                 for (int i = 0; i < size; i++)
                     result_aut.push_back(aut[i]);
