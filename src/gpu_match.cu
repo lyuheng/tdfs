@@ -534,14 +534,14 @@ namespace STMatch
 					{
 						for(; stk->iter[level] < stk->slot_size[level]; stk->iter[level]++)
 						{
-							Prefix prefix;
+							int prefix[3];
 							prefix[0] = path(stk, pat, -1);
 							prefix[1] = path(stk, pat, 0);
 							if (level == 1)
 								prefix[2] = path(stk, pat, 1);
 							else 
 								prefix[2] = 0xFFFFFFFF;
-							_stealing_args->queue.enqueue(prefix);
+							_stealing_args->queue.enqueue(set(prefix[0], prefix[1], prefix[2]));
 						}
 					}
 					__syncwarp();
