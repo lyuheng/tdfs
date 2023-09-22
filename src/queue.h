@@ -59,7 +59,7 @@ public:
         }
     }
 
-	__forceinline__ __device__ bool enqueue(unsigned long long &p)
+	__forceinline__ __device__ bool enqueue(unsigned long long p)
     {
         int fill = atomicAdd(&count_, 1);
         if (fill < size_)
