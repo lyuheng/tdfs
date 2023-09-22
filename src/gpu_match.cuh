@@ -4,6 +4,7 @@
 #include "pattern.h"
 #include "callstack.h"
 #include "job_queue.h"
+#include "queue.h"
 
 namespace STMatch {
   __global__ void _parallel_match(Graph* dev_graph, Pattern* dev_pattern, 

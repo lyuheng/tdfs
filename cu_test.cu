@@ -5,6 +5,8 @@
 using namespace std;
 using namespace STMatch;
 
+#define TIMEOUT_QUEUE_CAP 10000
+
 int main(int argc, char* argv[]) {
 
   cudaSetDevice(0);
@@ -65,6 +67,14 @@ int main(int argc, char* argv[]) {
   cudaMalloc(&stk_valid, sizeof(bool) * GRID_DIM);
   cudaMemset(stk_valid, 0, sizeof(bool) * GRID_DIM);
 
+  Prefix* gpu_timeout_queue_space;
+  cudaMalloc(&gpu_timeout_queue_space, sizeof(Prefix) * TIMEOUT_QUEUE_CAP);
+  Queue* gpu_timeout_queue;
+  cudaMallocManaged(&gpu_timeout_queue, sizeof(Queue));
+  gpu_timeout_queue->queue_ = gpu_timeout_queue_space;
+  gpu_timeout_queue->resetQueue();
+  
+  
   cudaEvent_t start, stop;
   cudaEventCreate(&start);
   cudaEventCreate(&stop);
@@ -74,7 +84,7 @@ int main(int argc, char* argv[]) {
   //cout << "shared memory usage: " << sizeof(Graph) << " " << sizeof(Pattern) << " " << sizeof(JobQueue) << " " << sizeof(CallStack) * NWARPS_PER_BLOCK << " " << NWARPS_PER_BLOCK * 33 * sizeof(int) << " Bytes" << endl;
 
   _parallel_match << <GRID_DIM, BLOCK_DIM >> > (gpu_graph, gpu_pattern, gpu_callstack, gpu_queue, gpu_res, idle_warps, 
-                                              idle_warps_count, global_mutex);
+                                              idle_warps_count, global_mutex, gpu_timeout_queue);
 
 
   cudaEventRecord(stop);

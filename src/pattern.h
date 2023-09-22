@@ -49,7 +49,6 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
     bitarray32 partial[MAX_SLOT_NUM];
     set_op_t set_ops[MAX_SLOT_NUM];
 
-
     int backward_neighbors[PAT_SIZE][PAT_SIZE];
     int num_BN[PAT_SIZE];
     int condition_order[PAT_SIZE * PAT_SIZE * 2];
