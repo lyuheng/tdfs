@@ -29,11 +29,11 @@ struct DeletionMarker
 	static constexpr void* val{ nullptr };
 };
 
-template <>
-struct DeletionMarker<int>
-{
-	static constexpr int val { 0xFFFFFFFF };
-};
+// template <>
+// struct DeletionMarker<int>
+// {
+// 	static constexpr int val { staic_cast<int>(0xFFFFFFFF) };
+// };
 
 template<>
 struct DeletionMarker<unsigned long long>
