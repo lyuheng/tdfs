@@ -11,15 +11,15 @@ namespace STMatch
  *  |-|----------|----------|----------|
  *   0     x          y           z
  */
-__forceinline__ __device__ long set(int x, int y, int z)
+__forceinline__ __device__ unsigned long long set(int x, int y, int z)
 {
-    long composite_prefix = (x << 42) | (y << 21) | z;
+    unsigned long long composite_prefix = ((unsigned long long)x << 42) | ((unsigned long long)y << 21) | (unsigned long long)z;
     return composite_prefix;
 }
-__forceinline__ __device__ void get(long prefix, int &x, int &y, int &z)
+__forceinline__ __device__ void get(unsigned long long prefix, int &x, int &y, int &z)
 {
     x = prefix >> 42;
-    y = (prefix >> 21) | & 0x1FFFFF;
+    y = (prefix >> 21) & 0x1FFFFF;
     z = prefix & 0x1FFFFF;  // 0b 0001 1111 1111 1111 1111 1111
 }
 
@@ -36,9 +36,9 @@ struct DeletionMarker<int>
 };
 
 template<>
-struct DeletionMarker<long>
+struct DeletionMarker<unsigned long long>
 {
-    static constexpr long val {0xFFFFFFFFFFFFFFFF};
+    static constexpr unsigned long long val {0xFFFFFFFFFFFFFFFF};
 };
 
 class Queue
@@ -55,7 +55,7 @@ public:
     {
         for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < size_; i += blockDim.x * gridDim.x)
         {
-            queue_[i] = DeletionMarker<long>::val;
+            queue_[i] = DeletionMarker<unsigned long long>::val;
         }
     }
 
@@ -65,7 +65,7 @@ public:
         if (fill < size_)
         {
             unsigned int pos = atomicAdd(&back_, 1) % size_;
-            while (atomicCAS(queue_ + pos, DeletionMarker<long>::val, p) != DeletionMarker<Prefix>::val)
+            while (atomicCAS(queue_ + pos, DeletionMarker<unsigned long long>::val, p) != DeletionMarker<unsigned long long>::val)
                 __nanosleep(10);
             return true;
         }
@@ -76,7 +76,7 @@ public:
         }
     }
 
-	__forceinline__ __device__ bool dequeue(long& element)
+	__forceinline__ __device__ bool dequeue(unsigned long long& element)
     {
         int readable = atomicSub(&count_, 1);
         if (readable <= 0)
@@ -85,12 +85,12 @@ public:
             return false;
         }
         unsigned int pos = atomicAdd(&front_, 1) % size_;
-        while ((element = atomicExch(queue_ + pos, DeletionMarker<long>::val)) == DeletionMarker<long>::val)
+        while ((element = atomicExch(queue_ + pos, DeletionMarker<unsigned long long>::val)) == DeletionMarker<unsigned long long>::val)
             __nanosleep(10);
         return true;
     }
 
-	long* queue_;
+	unsigned long long* queue_;
 	int count_{ 0 };
 	unsigned int front_{ 0 };
 	unsigned int back_{ 0 };

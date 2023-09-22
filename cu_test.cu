@@ -67,8 +67,8 @@ int main(int argc, char* argv[]) {
   cudaMalloc(&stk_valid, sizeof(bool) * GRID_DIM);
   cudaMemset(stk_valid, 0, sizeof(bool) * GRID_DIM);
 
-  long* gpu_timeout_queue_space;
-  cudaMalloc(&gpu_timeout_queue_space, sizeof(long) * TIMEOUT_QUEUE_CAP);
+  unsigned long long* gpu_timeout_queue_space;
+  cudaMalloc(&gpu_timeout_queue_space, sizeof(unsigned long long) * TIMEOUT_QUEUE_CAP);
   Queue* gpu_timeout_queue;
   cudaMallocManaged(&gpu_timeout_queue, sizeof(Queue));
   gpu_timeout_queue->queue_ = gpu_timeout_queue_space;
