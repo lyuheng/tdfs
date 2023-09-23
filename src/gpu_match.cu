@@ -546,6 +546,18 @@ namespace STMatch
 						}
 					}
 					__syncwarp();
+					
+					// then backtrack
+					stk->slot_size[level] = 0;
+					stk->iter[level] = 0;
+					if (level > 0)
+					{
+						if (threadIdx.x % WARP_SIZE == 0)
+							level--;
+						if (threadIdx.x % WARP_SIZE == 0)
+							stk->iter[level]++;
+						__syncwarp();
+					}
 				}
 				else // backtrack case
 				{
