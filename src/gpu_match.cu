@@ -6,7 +6,7 @@
 #define LANEID (threadIdx.x % WARP_SIZE)
 #define PEAK_CLK (float)1410000 // A100
 #define ELAPSED_TIME(start) (clock() - start)/PEAK_CLK // in ms
-#define TIMEOUT 100 // timeout
+#define TIMEOUT 10 // timeout
 
 namespace STMatch
 {
@@ -17,6 +17,8 @@ namespace STMatch
 		int *global_mutex;
 		int *local_mutex;
 		CallStack *global_callstack;
+
+		Queue *queue;
 	};
 
 	__forceinline__ __device__ void lock(int *mutex)
@@ -512,6 +514,23 @@ namespace STMatch
 				}
 				else if (stk->iter[level] < stk->slot_size[level] && is_timeout)
 				{
+					if (LANEID == 0)
+					{
+						for(; stk->iter[level] < stk->slot_size[level]; stk->iter[level]++)
+						{
+							int prefix[3];
+							prefix[0] = path(stk, pat, -1);
+							prefix[1] = path(stk, pat, 0);
+							if (level == 1)
+								prefix[2] = path(stk, pat, 1);
+							else 
+								prefix[2] = 0xFFFFFFFF;
+							_stealing_args->queue->enqueue(set(prefix[0], prefix[1], prefix[2]));
+						}
+					}
+					__syncwarp();
+
+
 					stk->slot_size[level] = 0;
 					stk->iter[level] = 0;
 					if (level > 0)
@@ -580,6 +599,8 @@ namespace STMatch
 		stealing_args.global_mutex = global_mutex;
 		stealing_args.local_mutex = mutex_this_block;
 		stealing_args.global_callstack = dev_callstack;
+
+		stealing_args.queue = queue;
 
 		int global_tid = blockIdx.x * blockDim.x + threadIdx.x;
 		int global_wid = global_tid / WARP_SIZE;
