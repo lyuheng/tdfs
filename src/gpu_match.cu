@@ -523,6 +523,7 @@ namespace STMatch
 				if (LANEID == 0)
 					is_timeout = level < STOP_LEVEL && ELAPSED_TIME(start_clk) > TIMEOUT;
 				is_timeout = __shfl_sync(0xFFFFFFFF, is_timeout, 0);
+
 				if (stk->iter[level] < stk->slot_size[level] && !is_timeout) // normal case
 				{
 					if (threadIdx.x % WARP_SIZE == 0)
@@ -531,22 +532,22 @@ namespace STMatch
 				}
 				else if (stk->iter[level] < stk->slot_size[level] && is_timeout) // timeout case
 				{
-					if (LANEID == 0)
-					{
-						for(; stk->iter[level] < stk->slot_size[level]; stk->iter[level]++)
-						{
-							int prefix[3];
-							prefix[0] = path(stk, pat, -1);
-							prefix[1] = path(stk, pat, 0);
-							if (level == 1)
-								prefix[2] = path(stk, pat, 1);
-							else 
-								prefix[2] = 0xFFFFFFFF;
-							_stealing_args->queue->enqueue(set(prefix[0], prefix[1], prefix[2]));
-						}
-					}
-					__syncwarp();
-					
+					// if (LANEID == 0)
+					// {
+					// 	for(; stk->iter[level] < stk->slot_size[level]; stk->iter[level]++)
+					// 	{
+					// 		int prefix[3];
+					// 		prefix[0] = path(stk, pat, -1);
+					// 		prefix[1] = path(stk, pat, 0);
+					// 		if (level == 1)
+					// 			prefix[2] = path(stk, pat, 1);
+					// 		else 
+					// 			prefix[2] = 0xFFFFFFFF;
+					// 		_stealing_args->queue->enqueue(set(prefix[0], prefix[1], prefix[2]));
+					// 	}
+					// }
+					// __syncwarp();
+
 					// then backtrack
 					stk->slot_size[level] = 0;
 					stk->iter[level] = 0;
