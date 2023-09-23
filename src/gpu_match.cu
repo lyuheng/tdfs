@@ -371,10 +371,10 @@ namespace STMatch
 						}
 					}
 					stk->slot_size[0] = njobs;
-					start_clk = clock64();
 				}	
 			}
 			__syncwarp();
+			start_clk = clock64();
 		}
 		else
 		{
