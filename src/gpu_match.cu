@@ -347,19 +347,19 @@ namespace STMatch
 				bool ret = _stealing_args->queue->dequeue(element);
 				
 				if (ret) {
-					int x, y, z;
-					get(element, x, y, z);
+					// int x, y, z;
+					// get(element, x, y, z);
 
-					stk->slot_storage[0][0] = x;
-					stk->slot_storage[0][JOB_CHUNK_SIZE] = y;
-					stk->slot_size[0] = 1;
+					// stk->slot_storage[0][0] = x;
+					// stk->slot_storage[0][JOB_CHUNK_SIZE] = y;
+					// stk->slot_size[0] = 1;
 
-					if (z != 0x1FFFFF)
-					{
-						level = 1;
-						stk->slot_storage[1][0] = z;
-						stk->slot_size[1] = 1;
-					}
+					// if (z != 0x1FFFFF)
+					// {
+					// 	level = 1;
+					// 	stk->slot_storage[1][0] = z;
+					// 	stk->slot_size[1] = 1;
+					// }
 				} else {
 
 					get_job(q, cur_job, njobs);
