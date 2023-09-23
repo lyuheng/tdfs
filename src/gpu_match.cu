@@ -346,8 +346,7 @@ namespace STMatch
 				unsigned long long element;
 				bool ret = _stealing_args->queue->dequeue(element);
 				
-				if (ret)
-				{
+				if (ret) {
 					int x, y, z;
 					get(element, x, y, z);
 
@@ -361,9 +360,7 @@ namespace STMatch
 						stk->slot_storage[1][0] = z;
 						stk->slot_size[1] = 1;
 					}
-				}
-				else
-				{
+				} else {
 
 					get_job(q, cur_job, njobs);
 
