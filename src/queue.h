@@ -71,6 +71,7 @@ public:
         }
         else
         {
+            assert(false);
             __trap(); // no space to enqueue
             return false;
         }
