@@ -586,6 +586,8 @@ namespace STMatch
 									int *idle_warps, int *idle_warps_count, int *global_mutex,
 									Queue *queue)
 	{
+		queue->init();
+
 		__shared__ Graph graph;
 		__shared__ Pattern pat;
 		__shared__ CallStack stk[NWARPS_PER_BLOCK];
