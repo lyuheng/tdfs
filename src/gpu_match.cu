@@ -4,9 +4,6 @@
 #define UNROLL_SIZE(l) (l > 0 ? UNROLL : 1)
 
 #define LANEID (threadIdx.x % WARP_SIZE)
-#define PEAK_CLK (float)1410000 // A100
-#define ELAPSED_TIME(start) (clock() - start)/PEAK_CLK // in ms
-#define TIMEOUT 1000000 // timeout = 1s
 
 namespace STMatch
 {
@@ -17,8 +14,6 @@ namespace STMatch
 		int *global_mutex;
 		int *local_mutex;
 		CallStack *global_callstack;
-
-		Queue *queue;
 	};
 
 	__forceinline__ __device__ void lock(int *mutex)
@@ -299,7 +294,7 @@ namespace STMatch
 				if (pred) pred = bsearch_exist(arg->set1, arg->set1_size, target);
 			}
 			int loc = scanIndex(pred) + res_length;
-			if ((arg->level < arg->pat->nnodes - 2 && pred) || ((arg->level == arg->pat->nnodes - 2) && !last_round && pred)
+			if ((arg->level < arg->pat->nnodes - 2 && pred) || ((arg->level == arg->pat->nnodes - 2) && !last_round && pred) 
 				|| (arg->level == arg->pat->nnodes - 2) && last_round)
 				arg->res[loc] = target;
 			if (threadIdx.x % WARP_SIZE == 31) // last lane's loc+pred is number of items found in this scan
@@ -328,7 +323,7 @@ namespace STMatch
 		unlock(&(q->mutex));
 	}
 
-	__device__ void extend(Graph *g, Pattern *pat, CallStack *stk, JobQueue *q, pattern_node_t level, long &start_clk)
+	__device__ void extend(Graph *g, Pattern *pat, CallStack *stk, JobQueue *q, pattern_node_t level)
 	{
 
 		__shared__ Arg_t arg[NWARPS_PER_BLOCK];
@@ -343,39 +338,18 @@ namespace STMatch
 			
 			if (threadIdx.x % WARP_SIZE == 0)
 			{
-				// temporarily disabled
-				// // if cannot get a task from queue
-				// Prefix prefix;
-				// bool ret = stealing_args->queue->dequeue(prefix);
+				get_job(q, cur_job, njobs);
 
-				// if (ret) 
-				// {
-				// 	stk->slot_storage[0][0] = prefix.prefix[0];
-				// 	stk->slot_storage[0][JOB_CHUNK_SIZE] = prefix.prefix[1];
-				// 	stk->slot_size[0] = 1;
-
-				// 	if (prefix.prefix[2] != 0xFFFFFFFF)
-				// 	{
-				// 		level = 1;
-				// 		stk->slot_storage[1][0] = prefix.prefix[2];
-				// 		stk->slot_size[0] = 1;
-				// 	}
-				// }
-				// else
-				{	
-					get_job(q, cur_job, njobs);
-					for (size_t i = 0; i < njobs; i++)
+				for (size_t i = 0; i < njobs; i++)
+				{
+					for (int j = 0; j < 2; j++)
 					{
-						for (int j = 0; j < 2; j++)
-						{
-							stk->slot_storage[0][i + JOB_CHUNK_SIZE * j] = (q->q[cur_job + i].nodes)[j];
-						}
+						stk->slot_storage[0][i + JOB_CHUNK_SIZE * j] = (q->q[cur_job + i].nodes)[j];
 					}
-					stk->slot_size[0] = njobs;
-				}	
+				}
+				stk->slot_size[0] = njobs;
 			}
 			__syncwarp();
-			start_clk = clock64();
 		}
 		else
 		{
@@ -488,18 +462,18 @@ namespace STMatch
 	*/
 
 	__device__ void match(Graph *g, Pattern *pat,
-						  CallStack *stk, JobQueue *q, size_t *count, StealingArgs *_stealing_args, long start_clk)
+						  CallStack *stk, JobQueue *q, size_t *count, StealingArgs *_stealing_args)
 	{
 
 		pattern_node_t &level = stk->level;
 
 		while (true)
 		{
-			// if (threadIdx.x % WARP_SIZE == 0)
-			// {
-			// 	lock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
-			// }
-			// __syncwarp();
+			if (threadIdx.x % WARP_SIZE == 0)
+			{
+				lock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
+			}
+			__syncwarp();
 
 			if (level < pat->nnodes - 2)
 			{
@@ -511,57 +485,23 @@ namespace STMatch
 
 				if (stk->slot_size[level] == 0)
 				{
-					extend(g, pat, stk, q, level, start_clk);
+					extend(g, pat, stk, q, level);
 					if (level == 0 && stk->slot_size[0] == 0)
 					{
-						// if (threadIdx.x % WARP_SIZE == 0)
-						// 	unlock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
-						// __syncwarp();
+						if (threadIdx.x % WARP_SIZE == 0)
+							unlock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
+						__syncwarp();
 						break;
 					}
 				}
-				int is_timeout;
-				if (LANEID == 0)
-					is_timeout = level < STOP_LEVEL && ELAPSED_TIME(start_clk) > TIMEOUT;
-				is_timeout = 0; // __shfl_sync(0xFFFFFFFF, is_timeout, 0);
 
-				if (stk->iter[level] < stk->slot_size[level] && !is_timeout) // normal case
+				if (stk->iter[level] < stk->slot_size[level])
 				{
 					if (threadIdx.x % WARP_SIZE == 0)
 						level++;
 					__syncwarp();
 				}
-				else if (stk->iter[level] < stk->slot_size[level] && is_timeout) // timeout case
-				{
-					// if (LANEID == 0)
-					// {
-					// 	for(; stk->iter[level] < stk->slot_size[level]; stk->iter[level]++)
-					// 	{
-					// 		int prefix[3];
-					// 		prefix[0] = path(stk, pat, -1);
-					// 		prefix[1] = path(stk, pat, 0);
-					// 		if (level == 1)
-					// 			prefix[2] = path(stk, pat, 1);
-					// 		else 
-					// 			prefix[2] = 0xFFFFFFFF;
-					// 		_stealing_args->queue->enqueue(set(prefix[0], prefix[1], prefix[2]));
-					// 	}
-					// }
-					// __syncwarp();
-
-					// then backtrack
-					stk->slot_size[level] = 0;
-					stk->iter[level] = 0;
-					if (level > 0)
-					{
-						if (threadIdx.x % WARP_SIZE == 0)
-							level--;
-						if (threadIdx.x % WARP_SIZE == 0)
-							stk->iter[level]++;
-						__syncwarp();
-					}
-				}
-				else // backtrack case
+				else
 				{
 					stk->slot_size[level] = 0;
 					stk->iter[level] = 0;
@@ -578,7 +518,7 @@ namespace STMatch
 			else if (level == pat->nnodes - 2)
 			{
 
-				extend(g, pat, stk, q, level, start_clk);
+				extend(g, pat, stk, q, level);
 
 				if (LANEID == 0)
 				{
@@ -594,8 +534,8 @@ namespace STMatch
 				__syncwarp();
 			}
 			//__syncwarp();
-			// if (threadIdx.x % WARP_SIZE == 0)
-			// 	unlock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
+			if (threadIdx.x % WARP_SIZE == 0)
+				unlock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
 			__syncwarp();
 		}
 	}
@@ -618,7 +558,6 @@ namespace STMatch
 		stealing_args.global_mutex = global_mutex;
 		stealing_args.local_mutex = mutex_this_block;
 		stealing_args.global_callstack = dev_callstack;
-		stealing_args.queue = queue;
 
 		int global_tid = blockIdx.x * blockDim.x + threadIdx.x;
 		int global_wid = global_tid / WARP_SIZE;
@@ -647,10 +586,11 @@ namespace STMatch
     	}
      	__syncthreads();
 
+		auto start = clock64();
+
 		while (true)
 		{
-			long start_clk = clock64();
-			match(&graph, &pat, &stk[local_wid], job_queue, &count[local_wid], &stealing_args, start_clk);
+			match(&graph, &pat, &stk[local_wid], job_queue, &count[local_wid], &stealing_args);
 			__syncwarp();
 
 			stealed[local_wid] = false;
@@ -712,6 +652,8 @@ namespace STMatch
 				break;
 			}
 		}
+
+		auto stop = clock64();
 
 		if (threadIdx.x % WARP_SIZE == 0)
 		{
