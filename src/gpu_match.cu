@@ -6,7 +6,7 @@
 #define LANEID (threadIdx.x % WARP_SIZE)
 #define PEAK_CLK (float)1410000 // A100
 #define ELAPSED_TIME(start) (clock() - start)/PEAK_CLK // in ms
-#define TIMEOUT 100 // timeout
+#define TIMEOUT 10 // timeout
 
 namespace STMatch
 {
@@ -344,18 +344,38 @@ namespace STMatch
 			if (threadIdx.x % WARP_SIZE == 0)
 			{
 				unsigned long long element;
-				_stealing_args->queue->dequeue(element);
+				bool ret = _stealing_args->queue->dequeue(element);
 				
-				get_job(q, cur_job, njobs);
-
-				for (size_t i = 0; i < njobs; i++)
+				if (ret)
 				{
-					for (int j = 0; j < 2; j++)
+					int x, y, z;
+					get(element, x, y, z);
+
+					stk->slot_storage[0][0] = x;
+					stk->slot_storage[0][JOB_CHUNK_SIZE] = y;
+					stk->slot_size[0] = 1;
+
+					if (z != 0x1FFFFF)
 					{
-						stk->slot_storage[0][i + JOB_CHUNK_SIZE * j] = (q->q[cur_job + i].nodes)[j];
+						level = 1;
+						stk->slot_storage[1][0] = z;
+						stk->slot_size[1] = 1;
 					}
 				}
-				stk->slot_size[0] = njobs;
+				else
+				{
+
+					get_job(q, cur_job, njobs);
+
+					for (size_t i = 0; i < njobs; i++)
+					{
+						for (int j = 0; j < 2; j++)
+						{
+							stk->slot_storage[0][i + JOB_CHUNK_SIZE * j] = (q->q[cur_job + i].nodes)[j];
+						}
+					}
+					stk->slot_size[0] = njobs;
+				}
 			}
 			__syncwarp();
 			start_clk = clock64();
@@ -528,7 +548,7 @@ namespace STMatch
 							if (level == 1)
 								prefix[2] = path(stk, pat, 1);
 							else 
-								prefix[2] = 0xFFFFFFFF;
+								prefix[2] = 0x1FFFFF;
 							_stealing_args->queue->enqueue(set(prefix[0], prefix[1], prefix[2]));
 						}
 					}
