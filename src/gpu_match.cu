@@ -504,11 +504,24 @@ namespace STMatch
 				is_timeout = __shfl_sync(0xFFFFFFFF, is_timeout, 0);
 
 
-				if (stk->iter[level] < stk->slot_size[level])
+				if (stk->iter[level] < stk->slot_size[level] && !is_timeout)
 				{
 					if (threadIdx.x % WARP_SIZE == 0)
 						level++;
 					__syncwarp();
+				}
+				else if (stk->iter[level] < stk->slot_size[level] && is_timeout)
+				{
+					stk->slot_size[level] = 0;
+					stk->iter[level] = 0;
+					if (level > 0)
+					{
+						if (threadIdx.x % WARP_SIZE == 0)
+							level--;
+						if (threadIdx.x % WARP_SIZE == 0)
+							stk->iter[level]++;
+						__syncwarp();
+					}
 				}
 				else
 				{
