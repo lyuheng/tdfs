@@ -6,7 +6,7 @@
 #define LANEID (threadIdx.x % WARP_SIZE)
 #define PEAK_CLK (float)1410000 // A100
 #define ELAPSED_TIME(start) (clock() - start)/PEAK_CLK // in ms
-#define TIMEOUT 10 // timeout
+#define TIMEOUT 100 // timeout
 
 namespace STMatch
 {
@@ -343,8 +343,8 @@ namespace STMatch
 			
 			if (threadIdx.x % WARP_SIZE == 0)
 			{
-				// unsigned long long element;
-				// _stealing_args->queue->dequeue(element);
+				unsigned long long element;
+				_stealing_args->queue->dequeue(element);
 				
 				get_job(q, cur_job, njobs);
 
