@@ -327,7 +327,7 @@ namespace STMatch
 		unlock(&(q->mutex));
 	}
 
-	__device__ void extend(Graph *g, Pattern *pat, CallStack *stk, JobQueue *q, pattern_node_t level)
+	__device__ void extend(Graph *g, Pattern *pat, CallStack *stk, JobQueue *q, pattern_node_t level, long &start_clk)
 	{
 
 		__shared__ Arg_t arg[NWARPS_PER_BLOCK];
@@ -371,6 +371,7 @@ namespace STMatch
 						}
 					}
 					stk->slot_size[0] = njobs;
+					start_clk = clock64();
 				}	
 			}
 			__syncwarp();
@@ -509,7 +510,7 @@ namespace STMatch
 
 				if (stk->slot_size[level] == 0)
 				{
-					extend(g, pat, stk, q, level);
+					extend(g, pat, stk, q, level, start_clk);
 					if (level == 0 && stk->slot_size[0] == 0)
 					{
 						// if (threadIdx.x % WARP_SIZE == 0)
@@ -563,7 +564,7 @@ namespace STMatch
 			else if (level == pat->nnodes - 2)
 			{
 
-				extend(g, pat, stk, q, level);
+				extend(g, pat, stk, q, level, start_clk);
 
 				if (LANEID == 0)
 				{
