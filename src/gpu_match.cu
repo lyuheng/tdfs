@@ -522,7 +522,7 @@ namespace STMatch
 				int is_timeout;
 				if (LANEID == 0)
 					is_timeout = level < STOP_LEVEL && ELAPSED_TIME(start_clk) > TIMEOUT;
-				is_timeout = __shfl_sync(0xFFFFFFFF, is_timeout, 0);
+				is_timeout = 0; // __shfl_sync(0xFFFFFFFF, is_timeout, 0);
 
 				if (stk->iter[level] < stk->slot_size[level] && !is_timeout) // normal case
 				{
