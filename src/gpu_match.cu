@@ -327,7 +327,8 @@ namespace STMatch
 		unlock(&(q->mutex));
 	}
 
-	__device__ void extend(Graph *g, Pattern *pat, CallStack *stk, JobQueue *q, pattern_node_t level, long &start_clk)
+	__device__ void extend(Graph *g, Pattern *pat, CallStack *stk, JobQueue *q, pattern_node_t level, long &start_clk, 
+							StealingArgs *_stealing_args)
 	{
 
 		__shared__ Arg_t arg[NWARPS_PER_BLOCK];
@@ -342,6 +343,9 @@ namespace STMatch
 			
 			if (threadIdx.x % WARP_SIZE == 0)
 			{
+				// unsigned long long element;
+				// _stealing_args->queue->dequeue(element);
+				
 				get_job(q, cur_job, njobs);
 
 				for (size_t i = 0; i < njobs; i++)
@@ -490,7 +494,7 @@ namespace STMatch
 
 				if (stk->slot_size[level] == 0)
 				{
-					extend(g, pat, stk, q, level, start_clk);
+					extend(g, pat, stk, q, level, start_clk, _stealing_args);
 					if (level == 0 && stk->slot_size[0] == 0)
 					{
 						if (threadIdx.x % WARP_SIZE == 0)
@@ -559,7 +563,7 @@ namespace STMatch
 			else if (level == pat->nnodes - 2)
 			{
 
-				extend(g, pat, stk, q, level, start_clk);
+				extend(g, pat, stk, q, level, start_clk, _stealing_args);
 
 				if (LANEID == 0)
 				{
