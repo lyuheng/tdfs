@@ -527,7 +527,7 @@ namespace STMatch
 			else if (level == pat->nnodes - 2)
 			{
 
-				extend(g, pat, stk, q, level);
+				extend(g, pat, stk, q, level, start_clk);
 
 				if (LANEID == 0)
 				{
