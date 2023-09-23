@@ -4,6 +4,9 @@
 #define UNROLL_SIZE(l) (l > 0 ? UNROLL : 1)
 
 #define LANEID (threadIdx.x % WARP_SIZE)
+#define PEAK_CLK (float)1410000 // A100
+#define ELAPSED_TIME(start) (clock() - start)/PEAK_CLK // in ms
+#define TIMEOUT 100 // timeout = 1s
 
 namespace STMatch
 {
@@ -294,7 +297,7 @@ namespace STMatch
 				if (pred) pred = bsearch_exist(arg->set1, arg->set1_size, target);
 			}
 			int loc = scanIndex(pred) + res_length;
-			if ((arg->level < arg->pat->nnodes - 2 && pred) || ((arg->level == arg->pat->nnodes - 2) && !last_round && pred) )
+			if ((arg->level < arg->pat->nnodes - 2 && pred) || ((arg->level == arg->pat->nnodes - 2) && !last_round && pred))
 				arg->res[loc] = target;
 			if (threadIdx.x % WARP_SIZE == 31) // last lane's loc+pred is number of items found in this scan
 				res_length = loc + pred;
@@ -322,7 +325,7 @@ namespace STMatch
 		unlock(&(q->mutex));
 	}
 
-	__device__ void extend(Graph *g, Pattern *pat, CallStack *stk, JobQueue *q, pattern_node_t level)
+	__device__ void extend(Graph *g, Pattern *pat, CallStack *stk, JobQueue *q, pattern_node_t level, long &start_clk)
 	{
 
 		__shared__ Arg_t arg[NWARPS_PER_BLOCK];
@@ -349,6 +352,7 @@ namespace STMatch
 				stk->slot_size[0] = njobs;
 			}
 			__syncwarp();
+			start_clk = clock64();
 		}
 		else
 		{
@@ -461,7 +465,7 @@ namespace STMatch
 	*/
 
 	__device__ void match(Graph *g, Pattern *pat,
-						  CallStack *stk, JobQueue *q, size_t *count, StealingArgs *_stealing_args)
+						  CallStack *stk, JobQueue *q, size_t *count, StealingArgs *_stealing_args, long &start_clk)
 	{
 
 		pattern_node_t &level = stk->level;
@@ -484,7 +488,7 @@ namespace STMatch
 
 				if (stk->slot_size[level] == 0)
 				{
-					extend(g, pat, stk, q, level);
+					extend(g, pat, stk, q, level, start_clk);
 					if (level == 0 && stk->slot_size[0] == 0)
 					{
 						if (threadIdx.x % WARP_SIZE == 0)
@@ -492,7 +496,13 @@ namespace STMatch
 						__syncwarp();
 						break;
 					}
-				}
+				}	
+
+				int is_timeout;
+				if (LANEID == 0)
+					is_timeout = level < STOP_LEVEL && ELAPSED_TIME(start_clk) > TIMEOUT;
+				is_timeout = __shfl_sync(0xFFFFFFFF, is_timeout, 0);
+
 
 				if (stk->iter[level] < stk->slot_size[level])
 				{
@@ -589,20 +599,21 @@ namespace STMatch
 
 		while (true)
 		{
-			match(&graph, &pat, &stk[local_wid], job_queue, &count[local_wid], &stealing_args);
+			long start_clk = clock64();
+			match(&graph, &pat, &stk[local_wid], job_queue, &count[local_wid], &stealing_args, start_clk);
 			__syncwarp();
 
 			stealed[local_wid] = false;
 
 			
-			if (STEAL_IN_BLOCK)
-			{
-				if (threadIdx.x % WARP_SIZE == 0)
-				{
-					stealed[local_wid] = trans_skt(stk, &stk[local_wid], &pat, &stealing_args);
-				}
-				__syncwarp();
-			}
+			// if (STEAL_IN_BLOCK)
+			// {
+			// 	if (threadIdx.x % WARP_SIZE == 0)
+			// 	{
+			// 		stealed[local_wid] = trans_skt(stk, &stk[local_wid], &pat, &stealing_args);
+			// 	}
+			// 	__syncwarp();
+			// }
 
 			/*
 			if (STEAL_ACROSS_BLOCK)
