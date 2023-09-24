@@ -557,7 +557,7 @@ namespace STMatch
 							if (level == 1)
 								z = path(stk, pat, 1);
 							else
-								z = (int)0xFFFFFFFF;
+								z = DeletionMarker<int>::val;
 							_stealing_args->queue->enqueue(x, y, z);
 						}
 					}
