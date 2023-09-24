@@ -318,13 +318,26 @@ namespace STMatch
 
 	__forceinline__ __device__ void get_job(JobQueue *q, graph_node_t &cur_pos, graph_node_t &njobs)
 	{
-		lock(&(q->mutex));
-		cur_pos = q->cur;
-		q->cur += JOB_CHUNK_SIZE;
-		if (q->cur > q->length)
-			q->cur = q->length;
-		njobs = q->cur - cur_pos;
-		unlock(&(q->mutex));
+		// lock(&(q->mutex));
+		// cur_pos = q->cur;
+		// q->cur += JOB_CHUNK_SIZE;
+		// if (q->cur > q->length)
+		// 	q->cur = q->length;
+		// njobs = q->cur - cur_pos;
+		// unlock(&(q->mutex));
+
+		cur_pos = atomicAdd(&q->cur, JOB_CHUNK_SIZE);
+		if (cur_pos < q->length) {
+			int tmp = cur_pos + JOB_CHUNK_SIZE;
+			if (tmp > q->length) 
+				tmp = q->length;
+			njobs = tmp - cur_pos;
+		}
+        else
+        {
+	        atomicSub(&q->cur, JOB_CHUNK_SIZE);
+            njobs = 0;
+        }
 	}
 
 	__device__ void extend(Graph *g, Pattern *pat, CallStack *stk, JobQueue *q, pattern_node_t level, long &start_clk, 
@@ -343,18 +356,15 @@ namespace STMatch
 			
 			if (threadIdx.x % WARP_SIZE == 0)
 			{
-				unsigned long long element;
-				bool ret = _stealing_args->queue->dequeue(element);
+				int x, y, z;
+				bool ret = _stealing_args->queue->dequeue(x, y, z);
 				
 				if (ret) {
-					int x, y, z;
-					get(element, x, y, z);
-
 					stk->slot_storage[0][0] = x;
 					stk->slot_storage[0][JOB_CHUNK_SIZE] = y;
 					stk->slot_size[0] = 1;
 
-					if (z != 0x1FFFFF)
+					if (z != 0xFFFFFFFF)
 					{
 						level = 1;
 						stk->slot_storage[1][0] = z;
@@ -539,14 +549,14 @@ namespace STMatch
 					{
 						for(; stk->iter[level] < stk->slot_size[level]; stk->iter[level]++)
 						{
-							int prefix[3];
-							prefix[0] = path(stk, pat, -1);
-							prefix[1] = path(stk, pat, 0);
+							int x, y, z;
+							x = path(stk, pat, -1);
+							y = path(stk, pat, 0);
 							if (level == 1)
-								prefix[2] = path(stk, pat, 1);
+								z = path(stk, pat, 1);
 							else 
-								prefix[2] = 0x1FFFFF;
-							_stealing_args->queue->enqueue(set(prefix[0], prefix[1], prefix[2]));
+								z = 0xFFFFFFFF;
+							_stealing_args->queue->enqueue(x, y, z);
 						}
 					}
 					__syncwarp();
