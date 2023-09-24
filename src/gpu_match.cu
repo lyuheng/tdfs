@@ -530,7 +530,9 @@ namespace STMatch
 						__syncwarp();
 						break;
 					}
-				}	
+					if (level == 0)
+						start_clk = clock64();
+				}
 
 				int is_timeout;
 				if (LANEID == 0)
