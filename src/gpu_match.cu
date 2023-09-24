@@ -356,21 +356,23 @@ namespace STMatch
 			
 			if (threadIdx.x % WARP_SIZE == 0)
 			{
-				int x, y, z;
-				bool ret = _stealing_args->queue->dequeue(x, y, z);
+				// int x, y, z;
+				// bool ret = _stealing_args->queue->dequeue(x, y, z);
 				
-				if (ret) {
-					stk->slot_storage[0][0] = x;
-					stk->slot_storage[0][JOB_CHUNK_SIZE] = y;
-					stk->slot_size[0] = 1;
+				// if (ret) {
+				// 	stk->slot_storage[0][0] = x;
+				// 	stk->slot_storage[0][JOB_CHUNK_SIZE] = y;
+				// 	stk->slot_size[0] = 1;
 
-					if (z != 0xFFFFFFFF)
-					{
-						level = 1;
-						stk->slot_storage[1][0] = z;
-						stk->slot_size[1] = 1;
-					}
-				} else {
+				// 	if (z != 0xFFFFFFFF)
+				// 	{
+				// 		level = 1;
+				// 		stk->slot_storage[1][0] = z;
+				// 		stk->slot_size[1] = 1;
+				// 	}
+				// } 
+				// else 
+				{
 
 					get_job(q, cur_job, njobs);
 
@@ -554,7 +556,7 @@ namespace STMatch
 							y = path(stk, pat, 0);
 							if (level == 1)
 								z = path(stk, pat, 1);
-							else 
+							else
 								z = 0xFFFFFFFF;
 							_stealing_args->queue->enqueue(x, y, z);
 						}
