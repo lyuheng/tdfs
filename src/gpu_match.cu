@@ -357,7 +357,7 @@ namespace STMatch
 			if (threadIdx.x % WARP_SIZE == 0)
 			{
 				int x, y, z;
-				// bool ret = _stealing_args->queue->dequeue(x, y, z);
+				bool ret = _stealing_args->queue->dequeue(x, y, z);
 				
 				// if (ret) {
 				// 	stk->slot_storage[0][0] = x;
@@ -557,7 +557,7 @@ namespace STMatch
 							if (level == 1)
 								z = path(stk, pat, 1);
 							else
-								z = 0xFFFFFFFF;
+								z = (int)0xFFFFFFFF;
 							_stealing_args->queue->enqueue(x, y, z);
 						}
 					}
