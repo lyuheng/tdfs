@@ -84,7 +84,7 @@ public:
 	__forceinline__ __device__ bool dequeue(int &x, int &y, int &z)
     {
         int readable = atomicSub(&count_, 3);
-        if (readable <= 0)
+        if (readable <= 2)
         {
             atomicAdd(&count_, 3);
             return false;
