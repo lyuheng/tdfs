@@ -72,7 +72,7 @@ int main(int argc, char* argv[]) {
   Queue* gpu_timeout_queue;
   cudaMallocManaged(&gpu_timeout_queue, sizeof(Queue));
   gpu_timeout_queue->queue_ = gpu_timeout_queue_space;
-  gpu_timeout_queue->size_ = TIMEOUT_QUEUE_CAP;
+  gpu_timeout_queue->size_ = TIMEOUT_QUEUE_CAP * (STOP_LEVEL + 1);
   gpu_timeout_queue->resetQueue();
   
   
