@@ -3,8 +3,6 @@
 
 #define UNROLL_SIZE(l) (l > 0 ? UNROLL : 1)
 
-#define TIMEOUT_LB
-#define ORI_LB
 #define LANEID (threadIdx.x % WARP_SIZE)
 #define PEAK_CLK (float)1410000 // A100
 #define ELAPSED_TIME(start) (clock() - start)/PEAK_CLK // in ms
@@ -358,7 +356,6 @@ namespace STMatch
 			
 			if (threadIdx.x % WARP_SIZE == 0)
 			{
-#ifdef TIMEOUT_LB
 				int x, y, z;
 				bool ret = _stealing_args->queue->dequeue(x, y, z);
 				if (ret) {
@@ -374,7 +371,6 @@ namespace STMatch
 					}
 				}
 				else
-#endif
 				{
 
 					get_job(q, cur_job, njobs);
