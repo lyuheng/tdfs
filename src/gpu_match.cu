@@ -6,7 +6,7 @@
 #define LANEID (threadIdx.x % WARP_SIZE)
 #define PEAK_CLK (float)1410000 // A100
 #define ELAPSED_TIME(start) (clock() - start)/PEAK_CLK // in ms
-#define TIMEOUT 10 // timeout
+#define TIMEOUT 100 // timeout
 
 namespace STMatch
 {
@@ -358,8 +358,6 @@ namespace STMatch
 			{
 				int x, y, z;
 				bool ret = _stealing_args->queue->dequeue(x, y, z);
-
-				
 				if (ret) {
 					stk->slot_storage[0][0] = x;
 					stk->slot_storage[0][JOB_CHUNK_SIZE] = y;
