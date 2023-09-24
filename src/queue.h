@@ -84,18 +84,18 @@ public:
 	__forceinline__ __device__ bool dequeue(int &x, int &y, int &z)
     {
         int readable = atomicSub(&count_, 3);
-        if (readable <= 2)
+        if (readable <= 0)
         {
             atomicAdd(&count_, 3);
             return false;
         }
         unsigned int pos = atomicAdd(&front_, 3) % size_;
-        while ((x = atomicExch(queue_ + pos, DeletionMarker<int>::val)) == DeletionMarker<int>::val)
-            __nanosleep(10);
-        while ((y = atomicExch(queue_ + pos + 1, DeletionMarker<int>::val)) == DeletionMarker<int>::val)
-            __nanosleep(10);
-        while ((z = atomicExch(queue_ + pos + 2, DeletionMarker<int>::val)) == DeletionMarker<int>::val)
-            __nanosleep(10);
+        // while ((x = atomicExch(queue_ + pos, DeletionMarker<int>::val)) == DeletionMarker<int>::val)
+        //     __nanosleep(10);
+        // while ((y = atomicExch(queue_ + pos + 1, DeletionMarker<int>::val)) == DeletionMarker<int>::val)
+        //     __nanosleep(10);
+        // while ((z = atomicExch(queue_ + pos + 2, DeletionMarker<int>::val)) == DeletionMarker<int>::val)
+        //     __nanosleep(10);
         return true;
     }
 
