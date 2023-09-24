@@ -3,6 +3,8 @@
 
 #define UNROLL_SIZE(l) (l > 0 ? UNROLL : 1)
 
+#define TIMEOUT_LB
+#define ORI_LB
 #define LANEID (threadIdx.x % WARP_SIZE)
 #define PEAK_CLK (float)1410000 // A100
 #define ELAPSED_TIME(start) (clock() - start)/PEAK_CLK // in ms
@@ -318,26 +320,26 @@ namespace STMatch
 
 	__forceinline__ __device__ void get_job(JobQueue *q, graph_node_t &cur_pos, graph_node_t &njobs)
 	{
-		lock(&(q->mutex));
-		cur_pos = q->cur;
-		q->cur += JOB_CHUNK_SIZE;
-		if (q->cur > q->length)
-			q->cur = q->length;
-		njobs = q->cur - cur_pos;
-		unlock(&(q->mutex));
+		// lock(&(q->mutex));
+		// cur_pos = q->cur;
+		// q->cur += JOB_CHUNK_SIZE;
+		// if (q->cur > q->length)
+		// 	q->cur = q->length;
+		// njobs = q->cur - cur_pos;
+		// unlock(&(q->mutex));
 
-		// cur_pos = atomicAdd(&q->cur, JOB_CHUNK_SIZE);
-		// if (cur_pos < q->length) {
-		// 	int tmp = cur_pos + JOB_CHUNK_SIZE;
-		// 	if (tmp > q->length) 
-		// 		tmp = q->length;
-		// 	njobs = tmp - cur_pos;
-		// }
-        // else
-        // {
-	    //     atomicSub(&q->cur, JOB_CHUNK_SIZE);
-        //     njobs = 0;
-        // }
+		cur_pos = atomicAdd(&q->cur, JOB_CHUNK_SIZE);
+		if (cur_pos < q->length) {
+			int tmp = cur_pos + JOB_CHUNK_SIZE;
+			if (tmp > q->length) 
+				tmp = q->length;
+			njobs = tmp - cur_pos;
+		}
+        else
+        {
+	        atomicSub(&q->cur, JOB_CHUNK_SIZE);
+            njobs = 0;
+        }
 	}
 
 	__device__ void extend(Graph *g, Pattern *pat, CallStack *stk, JobQueue *q, pattern_node_t level, long &start_clk, 
@@ -356,6 +358,7 @@ namespace STMatch
 			
 			if (threadIdx.x % WARP_SIZE == 0)
 			{
+#ifdef TIMEOUT_LB
 				int x, y, z;
 				bool ret = _stealing_args->queue->dequeue(x, y, z);
 				if (ret) {
@@ -371,6 +374,7 @@ namespace STMatch
 					}
 				}
 				else
+#endif
 				{
 
 					get_job(q, cur_job, njobs);
@@ -537,7 +541,6 @@ namespace STMatch
 					is_timeout = level < STOP_LEVEL && ELAPSED_TIME(start_clk) > TIMEOUT;
 				is_timeout = __shfl_sync(0xFFFFFFFF, is_timeout, 0);
 
-
 				if (stk->iter[level] < stk->slot_size[level] && !is_timeout)
 				{
 					if (threadIdx.x % WARP_SIZE == 0)
@@ -561,7 +564,6 @@ namespace STMatch
 						}
 					}
 					__syncwarp();
-
 
 					stk->slot_size[level] = 0;
 					stk->iter[level] = 0;
