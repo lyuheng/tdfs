@@ -530,8 +530,6 @@ namespace STMatch
 						__syncwarp();
 						break;
 					}
-					if (level == 0)
-						start_clk = clock64();
 				}
 
 				int is_timeout;
@@ -573,6 +571,8 @@ namespace STMatch
 							level--;
 						if (threadIdx.x % WARP_SIZE == 0)
 							stk->iter[level]++;
+						if (level == 0)
+							start_clk = clock64();
 						__syncwarp();
 					}
 				}
