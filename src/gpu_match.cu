@@ -570,8 +570,6 @@ namespace STMatch
 							level--;
 						if (threadIdx.x % WARP_SIZE == 0)
 							stk->iter[level]++;
-						if (level == 0)
-							start_clk = clock64();
 						__syncwarp();
 					}
 				}
@@ -586,6 +584,9 @@ namespace STMatch
 						if (threadIdx.x % WARP_SIZE == 0)
 							stk->iter[level]++;
 						__syncwarp();
+
+						if (level == 0)
+							start_clk = clock64();
 					}
 				}
 			}
