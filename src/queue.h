@@ -32,7 +32,7 @@ struct DeletionMarker
 template <>
 struct DeletionMarker<int>
 {
-	static constexpr int val { staic_cast<int>(0xFFFFFFFF) };
+	static constexpr int val { 0xFFFFFFFF };
 };
 
 template<>
