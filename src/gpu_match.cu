@@ -359,23 +359,20 @@ namespace STMatch
 				int x, y, z;
 				bool ret = _stealing_args->queue->dequeue(x, y, z);
 
-				// printf("x = %d, y = %d, z = %d\n", x, y, z);
-
-
 				
-				// if (ret) {
-				// 	stk->slot_storage[0][0] = x;
-				// 	stk->slot_storage[0][JOB_CHUNK_SIZE] = y;
-				// 	stk->slot_size[0] = 1;
+				if (ret) {
+					stk->slot_storage[0][0] = x;
+					stk->slot_storage[0][JOB_CHUNK_SIZE] = y;
+					stk->slot_size[0] = 1;
 
-				// 	if (z != 0xFFFFFFFF)
-				// 	{
-				// 		level = 1;
-				// 		stk->slot_storage[1][0] = z;
-				// 		stk->slot_size[1] = 1;
-				// 	}
-				// } 
-				// else 
+					if (z != DeletionMarker<int>::val - 1)
+					{
+						level = 1;
+						stk->slot_storage[1][0] = z;
+						stk->slot_size[1] = 1;
+					}
+				} 
+				else 
 				{
 
 					get_job(q, cur_job, njobs);
@@ -561,7 +558,7 @@ namespace STMatch
 							if (level == 1)
 								z = path(stk, pat, 1);
 							else
-								z = DeletionMarker<int>::val;
+								z = DeletionMarker<int>::val - 1;
 							_stealing_args->queue->enqueue(x, y, z);
 						}
 					}

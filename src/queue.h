@@ -94,8 +94,8 @@ public:
             __nanosleep(10);
         while ((y = atomicExch(queue_ + pos + 1, DeletionMarker<int>::val)) == DeletionMarker<int>::val)
             __nanosleep(10);
-        // while ((z = atomicExch(queue_ + pos + 2, DeletionMarker<int>::val)) == DeletionMarker<int>::val)
-        //     __nanosleep(10);
+        while ((z = atomicExch(queue_ + pos + 2, DeletionMarker<int>::val)) == DeletionMarker<int>::val)
+            __nanosleep(10);
         return true;
     }
 
