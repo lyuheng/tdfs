@@ -421,8 +421,8 @@ namespace STMatch
 						min_neighbor = neighbor_cnt;
 					}
 				}
-				// arr_copy(stk->slot_storage[level], &g->colidx[g->rowptr[t_min]], min_neighbor);
-				// stk->slot_size[level] = min_neighbor;
+				arr_copy(stk->slot_storage[level], &g->colidx[g->rowptr[t_min]], min_neighbor);
+				stk->slot_size[level] = min_neighbor;
 				
 				bool last_round;
 				if (i_min != 0)
