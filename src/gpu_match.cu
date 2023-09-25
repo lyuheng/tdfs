@@ -317,26 +317,26 @@ namespace STMatch
 
 	__forceinline__ __device__ void get_job(JobQueue *q, graph_node_t &cur_pos, graph_node_t &njobs)
 	{
-		// lock(&(q->mutex));
-		// cur_pos = q->cur;
-		// q->cur += JOB_CHUNK_SIZE;
-		// if (q->cur > q->length)
-		// 	q->cur = q->length;
-		// njobs = q->cur - cur_pos;
-		// unlock(&(q->mutex));
+		lock(&(q->mutex));
+		cur_pos = q->cur;
+		q->cur += JOB_CHUNK_SIZE;
+		if (q->cur > q->length)
+			q->cur = q->length;
+		njobs = q->cur - cur_pos;
+		unlock(&(q->mutex));
 
-		cur_pos = atomicAdd(&q->cur, JOB_CHUNK_SIZE);
-		if (cur_pos < q->length) {
-			int tmp = cur_pos + JOB_CHUNK_SIZE;
-			if (tmp > q->length) 
-				tmp = q->length;
-			njobs = tmp - cur_pos;
-		}
-        else
-        {
-	        atomicSub(&q->cur, JOB_CHUNK_SIZE);
-            njobs = 0;
-        }
+		// cur_pos = atomicAdd(&q->cur, JOB_CHUNK_SIZE);
+		// if (cur_pos < q->length) {
+		// 	int tmp = cur_pos + JOB_CHUNK_SIZE;
+		// 	if (tmp > q->length) 
+		// 		tmp = q->length;
+		// 	njobs = tmp - cur_pos;
+		// }
+        // else
+        // {
+	    //     atomicSub(&q->cur, JOB_CHUNK_SIZE);
+        //     njobs = 0;
+        // }
 	}
 
 	__device__ void extend(Graph *g, Pattern *pat, CallStack *stk, JobQueue *q, pattern_node_t level, long &start_clk, 
