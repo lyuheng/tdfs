@@ -440,7 +440,7 @@ namespace STMatch
 					last_round = false; //(pat->num_BN[actual_lvl] == 2) ? true : false;
 					compute_intersection(&arg[wid], stk, last_round);
 
-					for (int i = 1; i < pat->num_BN[actual_lvl]; ++i)
+					for (int i = 0; i < pat->num_BN[actual_lvl]; ++i)
 					{
 						if (i == i_min) continue;
 						last_round = false; // (i == pat->num_BN[actual_lvl] - 1) || (i == pat->num_BN[actual_lvl] - 2 && i_min == pat->num_BN[actual_lvl] - 1);
@@ -472,7 +472,7 @@ namespace STMatch
 					last_round = false; // (pat->num_BN[actual_lvl] == 2) ? true : false;
 					compute_intersection(&arg[wid], stk, last_round);
 
-					for (int i = 1; i < pat->num_BN[actual_lvl]; ++i)
+					for (int i = 0; i < pat->num_BN[actual_lvl]; ++i)
 					{
 						if (i == i_min) continue;
 						last_round = false; // (i == pat->num_BN[actual_lvl] - 1) || (i == pat->num_BN[actual_lvl] - 2 && i_min == pat->num_BN[actual_lvl] - 1);
