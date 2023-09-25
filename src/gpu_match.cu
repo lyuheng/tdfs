@@ -437,7 +437,7 @@ namespace STMatch
 					arg[wid].set2_size = min_neighbor;
 					arg[wid].res = stk->slot_storage[level];
 					arg[wid].res_size = &(stk->slot_size[level]);
-					last_round = (pat->num_BN[actual_lvl] == 2) ? true : false;
+					last_round = false; //(pat->num_BN[actual_lvl] == 2) ? true : false;
 					compute_intersection(&arg[wid], stk, last_round);
 
 					for (int i = 1; i < pat->num_BN[actual_lvl]; ++i)
@@ -469,7 +469,7 @@ namespace STMatch
 					arg[wid].set2_size = min_neighbor;
 					arg[wid].res = stk->slot_storage[level];
 					arg[wid].res_size = &(stk->slot_size[level]);
-					last_round = (pat->num_BN[actual_lvl] == 2) ? true : false;
+					last_round = false; // (pat->num_BN[actual_lvl] == 2) ? true : false;
 					compute_intersection(&arg[wid], stk, last_round);
 
 					for (int i = 1; i < pat->num_BN[actual_lvl]; ++i)
