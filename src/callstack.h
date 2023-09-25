@@ -13,7 +13,6 @@ namespace STMatch {
     graph_node_t slot_size[MAX_SLOT_NUM];
     graph_node_t (*slot_storage)[GRAPH_DEGREE];
     pattern_node_t level;
-    patttern_node_t top;
   } CallStack;
 
 /*
