@@ -421,28 +421,79 @@ namespace STMatch
 						min_neighbor = neighbor_cnt;
 					}
 				}
-				arr_copy(stk->slot_storage[level], &g->colidx[g->rowptr[t_min]], min_neighbor);
-				stk->slot_size[level] = min_neighbor;
-
-				for (int i = 0; i < pat->num_BN[actual_lvl]; ++i)
+				// arr_copy(stk->slot_storage[level], &g->colidx[g->rowptr[t_min]], min_neighbor);
+				// stk->slot_size[level] = min_neighbor;
+				
+				bool last_round;
+				if (i_min != 0)
 				{
-					if (i == i_min) continue;
-					bool last_round = (i == pat->num_BN[actual_lvl] - 1) || (i == pat->num_BN[actual_lvl] - 2 && i_min == pat->num_BN[actual_lvl] - 1);
-
-					BN = pat->backward_neighbors[actual_lvl][i];
+					BN = pat->backward_neighbors[actual_lvl][0];
 					t = path(stk, pat, BN - 1);
-
 					int* neighbor = &g->colidx[g->rowptr[t]];
 					int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
-
 					arg[wid].set1 = neighbor;
 					arg[wid].set1_size = neighbor_cnt;
-					arg[wid].set2 = stk->slot_storage[level];
-					arg[wid].set2_size = stk->slot_size[level];
+					arg[wid].set2 = &g->colidx[g->rowptr[t_min]];
+					arg[wid].set2_size = (graph_node_t)(g->rowptr[t_min + 1] - g->rowptr[t_min]);
 					arg[wid].res = stk->slot_storage[level];
 					arg[wid].res_size = &(stk->slot_size[level]);
-
+					last_round = (pat->num_BN[actual_lvl] == 2) ? true : false;
 					compute_intersection(&arg[wid], stk, last_round);
+
+					for (int i = 1; i < pat->num_BN[actual_lvl]; ++i)
+					{
+						if (i == i_min) continue;
+						last_round = (i == pat->num_BN[actual_lvl] - 1) || (i == pat->num_BN[actual_lvl] - 2 && i_min == pat->num_BN[actual_lvl] - 1);
+
+						BN = pat->backward_neighbors[actual_lvl][i];
+						t = path(stk, pat, BN - 1);
+
+						int* neighbor = &g->colidx[g->rowptr[t]];
+						int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
+
+						arg[wid].set1 = neighbor;
+						arg[wid].set1_size = neighbor_cnt;
+						arg[wid].set2 = stk->slot_storage[level];
+						arg[wid].set2_size = stk->slot_size[level];
+						arg[wid].res = stk->slot_storage[level];
+						arg[wid].res_size = &(stk->slot_size[level]);
+						compute_intersection(&arg[wid], stk, last_round);
+					}
+				}
+				else // i_min = 0 
+				{
+					BN = pat->backward_neighbors[actual_lvl][1];
+					t = path(stk, pat, BN - 1);
+					int* neighbor = &g->colidx[g->rowptr[t]];
+					int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
+					arg[wid].set1 = neighbor;
+					arg[wid].set1_size = neighbor_cnt;
+					arg[wid].set2 = &g->colidx[g->rowptr[t_min]];
+					arg[wid].set2_size = (graph_node_t)(g->rowptr[t_min + 1] - g->rowptr[t_min]);
+					arg[wid].res = stk->slot_storage[level];
+					arg[wid].res_size = &(stk->slot_size[level]);
+					last_round = (pat->num_BN[actual_lvl] == 2) ? true : false;
+					compute_intersection(&arg[wid], stk, last_round);
+
+					for (int i = 2; i < pat->num_BN[actual_lvl]; ++i)
+					{
+						if (i == i_min) continue;
+						last_round = (i == pat->num_BN[actual_lvl] - 1) || (i == pat->num_BN[actual_lvl] - 2 && i_min == pat->num_BN[actual_lvl] - 1);
+
+						BN = pat->backward_neighbors[actual_lvl][i];
+						t = path(stk, pat, BN - 1);
+						int* neighbor = &g->colidx[g->rowptr[t]];
+						int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
+
+						arg[wid].set1 = neighbor;
+						arg[wid].set1_size = neighbor_cnt;
+						arg[wid].set2 = stk->slot_storage[level];
+						arg[wid].set2_size = stk->slot_size[level];
+						arg[wid].res = stk->slot_storage[level];
+						arg[wid].res_size = &(stk->slot_size[level]);
+
+						compute_intersection(&arg[wid], stk, last_round);
+					}
 				}
 			}
 		}
