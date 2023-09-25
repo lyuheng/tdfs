@@ -257,7 +257,7 @@ namespace STMatch
 		return index;
 	}
 
-	__forceinline__ __device__ void compute_intersection(Arg_t *arg, CallStack *stk, bool last_round)
+	__forceinline__ __device__ void compute_intersection(Arg_t *arg, CallStack *stk, bool last_round, bool check_validity)
 	{
 		int res_length = 0;
 		int actual_lvl = arg->level + 1;
@@ -271,27 +271,31 @@ namespace STMatch
 			{
 				pred = true;
 				target = arg->set2[il];
-				for (int k = 0; k < arg->pat->condition_cnt[actual_lvl]; ++k)
-				{
-					int cond = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k];
-					int cond_lvl = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k + 1];
-					int cond_vertex_M = path(stk, arg->pat, cond_lvl - 1);
-					if (cond == CondOperator::LESS_THAN) {
-						if (cond_vertex_M <= target) {
-							pred = false;
-							break;
+
+				if (check_validity)
+				{	
+					for (int k = 0; k < arg->pat->condition_cnt[actual_lvl]; ++k)
+					{
+						int cond = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k];
+						int cond_lvl = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k + 1];
+						int cond_vertex_M = path(stk, arg->pat, cond_lvl - 1);
+						if (cond == CondOperator::LESS_THAN) {
+							if (cond_vertex_M <= target) {
+								pred = false;
+								break;
+							}
 						}
-					}
-					else if (cond == CondOperator::LARGER_THAN) {
-						if (cond_vertex_M >= target) {
-							pred = false;
-							break;
+						else if (cond == CondOperator::LARGER_THAN) {
+							if (cond_vertex_M >= target) {
+								pred = false;
+								break;
+							}
 						}
-					}
-					else if (cond == CondOperator::NON_EQUAL) {
-						if (cond_vertex_M == target) {
-							pred = false;
-							break;
+						else if (cond == CondOperator::NON_EQUAL) {
+							if (cond_vertex_M == target) {
+								pred = false;
+								break;
+							}
 						}
 					}
 				}
@@ -417,8 +421,8 @@ namespace STMatch
 						min_neighbor = neighbor_cnt;
 					}
 				}
-				arr_copy(stk->slot_storage[level], &g->colidx[g->rowptr[t_min]], min_neighbor);
-				stk->slot_size[level] = min_neighbor;
+				// arr_copy(stk->slot_storage[level], &g->colidx[g->rowptr[t_min]], min_neighbor);
+				// stk->slot_size[level] = min_neighbor;
 				
 				bool last_round;
 				if (i_min != 0)
@@ -434,7 +438,7 @@ namespace STMatch
 					arg[wid].res = stk->slot_storage[level];
 					arg[wid].res_size = &(stk->slot_size[level]);
 					last_round = (pat->num_BN[actual_lvl] == 2) ? true : false;
-					compute_intersection(&arg[wid], stk, last_round);
+					compute_intersection(&arg[wid], stk, last_round, true);
 
 					for (int i = 1; i < pat->num_BN[actual_lvl]; ++i)
 					{
@@ -450,7 +454,7 @@ namespace STMatch
 						arg[wid].set2_size = stk->slot_size[level];
 						arg[wid].res = stk->slot_storage[level];
 						arg[wid].res_size = &(stk->slot_size[level]);
-						compute_intersection(&arg[wid], stk, last_round);
+						compute_intersection(&arg[wid], stk, last_round, false);
 					}
 				}
 				else // i_min = 0 
@@ -466,7 +470,7 @@ namespace STMatch
 					arg[wid].res = stk->slot_storage[level];
 					arg[wid].res_size = &(stk->slot_size[level]);
 					last_round = (pat->num_BN[actual_lvl] == 2) ? true : false;
-					compute_intersection(&arg[wid], stk, last_round);
+					compute_intersection(&arg[wid], stk, last_round, true);
 
 					for (int i = 2; i < pat->num_BN[actual_lvl]; ++i)
 					{
@@ -482,7 +486,7 @@ namespace STMatch
 						arg[wid].set2_size = stk->slot_size[level];
 						arg[wid].res = stk->slot_storage[level];
 						arg[wid].res_size = &(stk->slot_size[level]);
-						compute_intersection(&arg[wid], stk, last_round);
+						compute_intersection(&arg[wid], stk, last_round, false);
 					}
 				}
 			}
