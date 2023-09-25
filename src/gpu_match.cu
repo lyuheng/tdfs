@@ -491,16 +491,20 @@ namespace STMatch
 				{
 					if (i == i_min) continue;
 					bool last_round = (i == pat->num_BN[actual_lvl] - 1) || (i == pat->num_BN[actual_lvl] - 2 && i_min == pat->num_BN[actual_lvl] - 1);
+
 					BN = pat->backward_neighbors[actual_lvl][i];
 					t = path(stk, pat, BN - 1);
+
 					int* neighbor = &g->colidx[g->rowptr[t]];
 					int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
+
 					arg[wid].set1 = neighbor;
 					arg[wid].set1_size = neighbor_cnt;
 					arg[wid].set2 = stk->slot_storage[level];
 					arg[wid].set2_size = stk->slot_size[level];
 					arg[wid].res = stk->slot_storage[level];
 					arg[wid].res_size = &(stk->slot_size[level]);
+
 					compute_intersection(&arg[wid], stk, last_round);
 				}
 			}
