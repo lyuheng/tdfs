@@ -6,7 +6,7 @@
 #define LANEID (threadIdx.x % WARP_SIZE)
 #define PEAK_CLK (float)1410000 // A100
 #define ELAPSED_TIME(start) (clock() - start)/PEAK_CLK // in ms
-#define TIMEOUT 100 // timeout
+#define TIMEOUT 1000 // timeout
 
 namespace STMatch
 {
@@ -375,7 +375,6 @@ namespace STMatch
 				}
 				else
 				{
-
 					get_job(q, cur_job, njobs);
 
 					for (size_t i = 0; i < njobs; i++)
