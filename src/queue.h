@@ -58,7 +58,7 @@ public:
             queue_[i] = DeletionMarker<int>::val;
         }
     }
-
+    // x - y - z - ....
 	__forceinline__ __device__ bool enqueue(int x, int y, int z)
     {
         int fill = atomicAdd(&count_, 3);
@@ -80,7 +80,7 @@ public:
             return false;
         }
     }
-
+    // (x1, y1, z1) (x1, y1, z2), (x1, y2, z1) ...
 	__forceinline__ __device__ bool dequeue(int &x, int &y, int &z)
     {
         int readable = atomicSub(&count_, 3);

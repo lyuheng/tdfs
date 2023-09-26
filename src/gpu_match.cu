@@ -359,21 +359,21 @@ namespace STMatch
 			
 			if (threadIdx.x % WARP_SIZE == 0)
 			{
-				int x, y, z;
-				bool ret = _stealing_args->queue->dequeue(x, y, z);
-				if (ret) {
-					stk->slot_storage[0][0] = x;
-					stk->slot_storage[0][JOB_CHUNK_SIZE] = y;
-					stk->slot_size[0] = 1;
+				// int x, y, z;
+				// bool ret = _stealing_args->queue->dequeue(x, y, z);
+				// if (ret) {
+				// 	stk->slot_storage[0][0] = x;
+				// 	stk->slot_storage[0][JOB_CHUNK_SIZE] = y;
+				// 	stk->slot_size[0] = 1;
 
-					if (z != DeletionMarker<int>::val - 1)
-					{
-						level = 1;
-						stk->slot_storage[1][0] = z;
-						stk->slot_size[1] = 1;
-					}
-				}
-				else
+				// 	if (z != DeletionMarker<int>::val - 1)
+				// 	{
+				// 		level = 1;
+				// 		stk->slot_storage[1][0] = z;
+				// 		stk->slot_size[1] = 1;
+				// 	}
+				// }
+				// else
 				{
 					get_job(q, cur_job, njobs);
 
@@ -550,11 +550,11 @@ namespace STMatch
 
 		while (true)
 		{
-			// if (threadIdx.x % WARP_SIZE == 0)
-			// {
-			// 	lock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
-			// }
-			// __syncwarp();
+			if (threadIdx.x % WARP_SIZE == 0)
+			{
+				lock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
+			}
+			__syncwarp();
 
 			if (level < pat->nnodes - 2)
 			{
@@ -569,54 +569,54 @@ namespace STMatch
 					extend(g, pat, stk, q, level, start_clk, _stealing_args);
 					if (level == 0 && stk->slot_size[0] == 0)
 					{
-						// if (threadIdx.x % WARP_SIZE == 0)
-						// 	unlock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
-						// __syncwarp();
+						if (threadIdx.x % WARP_SIZE == 0)
+							unlock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
+						__syncwarp();
 						break;
 					}
 				}
 
-				int is_timeout;
-				if (LANEID == 0)
-					is_timeout = level < STOP_LEVEL && ELAPSED_TIME(start_clk) > TIMEOUT;
-				is_timeout = __shfl_sync(0xFFFFFFFF, is_timeout, 0);
+				// int is_timeout;
+				// if (LANEID == 0)
+				// 	is_timeout = level < STOP_LEVEL && ELAPSED_TIME(start_clk) > TIMEOUT;
+				// is_timeout = __shfl_sync(0xFFFFFFFF, is_timeout, 0);
 
-				if (stk->iter[level] < stk->slot_size[level] && !is_timeout)
-				// if (stk->iter[level] < stk->slot_size[level])
+				// if (stk->iter[level] < stk->slot_size[level] && !is_timeout)
+				if (stk->iter[level] < stk->slot_size[level])
 				{
 					if (threadIdx.x % WARP_SIZE == 0)
 						level++;
 					__syncwarp();
 				}
-				else if (stk->iter[level] < stk->slot_size[level] && is_timeout)
-				{
-					if (LANEID == 0)
-					{
-						for(; stk->iter[level] < stk->slot_size[level]; stk->iter[level]++)
-						{
-							int x, y, z;
-							x = path(stk, pat, -1);
-							y = path(stk, pat, 0);
-							if (level == 1)
-								z = path(stk, pat, 1);
-							else
-								z = DeletionMarker<int>::val - 1;
-							_stealing_args->queue->enqueue(x, y, z);
-						}
-					}
-					__syncwarp();
+				// else if (stk->iter[level] < stk->slot_size[level] && is_timeout)
+				// {
+				// 	if (LANEID == 0)
+				// 	{
+				// 		for(; stk->iter[level] < stk->slot_size[level]; stk->iter[level]++)
+				// 		{
+				// 			int x, y, z;
+				// 			x = path(stk, pat, -1);
+				// 			y = path(stk, pat, 0);
+				// 			if (level == 1)
+				// 				z = path(stk, pat, 1);
+				// 			else
+				// 				z = DeletionMarker<int>::val - 1;
+				// 			_stealing_args->queue->enqueue(x, y, z);
+				// 		}
+				// 	}
+				// 	__syncwarp();
 
-					stk->slot_size[level] = 0;
-					stk->iter[level] = 0;
-					if (level > 0)
-					{
-						if (threadIdx.x % WARP_SIZE == 0)
-							level--;
-						if (threadIdx.x % WARP_SIZE == 0)
-							stk->iter[level]++;
-						__syncwarp();
-					}
-				}
+				// 	stk->slot_size[level] = 0;
+				// 	stk->iter[level] = 0;
+				// 	if (level > 0)
+				// 	{
+				// 		if (threadIdx.x % WARP_SIZE == 0)
+				// 			level--;
+				// 		if (threadIdx.x % WARP_SIZE == 0)
+				// 			stk->iter[level]++;
+				// 		__syncwarp();
+				// 	}
+				// }
 				else
 				{
 					stk->slot_size[level] = 0;
@@ -652,9 +652,9 @@ namespace STMatch
 				__syncwarp();
 			}
 			//__syncwarp();
-			// if (threadIdx.x % WARP_SIZE == 0)
-			// 	unlock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
-			// __syncwarp();
+			if (threadIdx.x % WARP_SIZE == 0)
+				unlock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
+			__syncwarp();
 		}
 	}
 
@@ -719,14 +719,14 @@ namespace STMatch
 			stealed[local_wid] = false;
 
 			
-			// if (STEAL_IN_BLOCK)
-			// {
-			// 	if (threadIdx.x % WARP_SIZE == 0)
-			// 	{
-			// 		stealed[local_wid] = trans_skt(stk, &stk[local_wid], &pat, &stealing_args);
-			// 	}
-			// 	__syncwarp();
-			// }
+			if (STEAL_IN_BLOCK)
+			{
+				if (threadIdx.x % WARP_SIZE == 0)
+				{
+					stealed[local_wid] = trans_skt(stk, &stk[local_wid], &pat, &stealing_args);
+				}
+				__syncwarp();
+			}
 
 			/*
 			if (STEAL_ACROSS_BLOCK)
