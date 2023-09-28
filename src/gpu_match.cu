@@ -650,7 +650,7 @@ namespace STMatch
 					stk->iter[level]++;
 				__syncwarp();
 			}
-			//__syncwarp();
+			__syncwarp();
 			// if (threadIdx.x % WARP_SIZE == 0)
 			// 	unlock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
 			// __syncwarp();
