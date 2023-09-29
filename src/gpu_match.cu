@@ -312,7 +312,7 @@ namespace STMatch
 						}
 						if (pred)
 						{
-							for (int k = -1; k < actual_lvl; ++k)
+							for (int k = -1; k < arg->level; ++k)
 							{
 								int cond_vertex_M = path(stk, arg->pat, k);
 								if (cond_vertex_M == target) {
