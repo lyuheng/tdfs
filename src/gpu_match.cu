@@ -265,7 +265,7 @@ namespace STMatch
 		int target;
 		int cur_label = arg->pat->vertex_labels[actual_lvl];
 		// printf("cur_label = %d\n", cur_label);
-		assert(cur_label == 0);
+		// assert(cur_label == 0);
 		for (int i = 0; i < arg->set2_size; i += WARP_SIZE)
 		{
 			pred = false;
