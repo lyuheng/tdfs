@@ -305,7 +305,7 @@ namespace STMatch
 					else 
 					{
 						// if labeled, check label
-						if ((1 << arg->pat->vertex_labels[actual_lvl]) != g->vertex_label[target])
+						if ((1 << arg->pat->vertex_labels[actual_lvl]) != arg->g->vertex_label[target])
 						{
 							pred = false;
 						}
@@ -313,7 +313,6 @@ namespace STMatch
 						{
 							for (int k = 0; k < arg->pat->condition_cnt[actual_lvl]; ++k)
 							{
-								int cond = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k];
 								int cond_lvl = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k + 1];
 								int cond_vertex_M = path(stk, arg->pat, cond_lvl - 1);
 								if (cond_vertex_M == target) {
