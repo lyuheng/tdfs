@@ -263,6 +263,7 @@ namespace STMatch
 		int actual_lvl = arg->level + 1;
 		bool pred;
 		int target;
+		int cur_label = arg->pat->vertex_labels[actual_lvl];
 		for (int i = 0; i < arg->set2_size; i += WARP_SIZE)
 		{
 			pred = false;
@@ -302,10 +303,10 @@ namespace STMatch
 							}
 						}
 					}
-					else 
+					else
 					{
 						// if labeled, check label
-						if (arg->pat->vertex_labels[actual_lvl] != arg->g->vertex_label[target])
+						if (arg->g->vertex_label[target] != cur_label)
 						{
 							pred = false;
 						}
