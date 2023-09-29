@@ -303,10 +303,10 @@ namespace STMatch
 							}
 						}
 					}
-					else
+					else 
 					{
-						// if labeled, check label
-						if (arg->g->vertex_label[target] != 1)
+						// if LABELED, check label
+						if (arg->g->vertex_label[target] != cur_label)
 						{
 							pred = false;
 						}
