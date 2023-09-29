@@ -83,7 +83,8 @@ namespace STMatch {
 
       g.vertex_label = new bitarray32[vertex_labels.size()];
       for (int i = 0; i < g.nnodes; i++) {
-        g.vertex_label[i] = (1 << vertex_labels[i]);
+        // g.vertex_label[i] = (1 << vertex_labels[i]);
+        g.vertex_label[i] = vertex_labels[i];
       }
       // memcpy(g.vertex_label, vertex_labels.data(), sizeof(int) * vertex_labels.size());
 

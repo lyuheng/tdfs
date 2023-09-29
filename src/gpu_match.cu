@@ -305,7 +305,7 @@ namespace STMatch
 					else 
 					{
 						// if labeled, check label
-						if ((1 << arg->pat->vertex_labels[actual_lvl]) != arg->g->vertex_label[target])
+						if (arg->pat->vertex_labels[actual_lvl] != arg->g->vertex_label[target])
 						{
 							pred = false;
 						}
