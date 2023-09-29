@@ -75,8 +75,9 @@ public:
         }
         else
         {
-            assert(false);
-            __trap(); // no space to enqueue
+            // assert(false);
+            // __trap(); // no space to enqueue
+            atomicSub(&count_, 3);
             return false;
         }
     }

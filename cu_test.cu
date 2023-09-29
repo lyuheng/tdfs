@@ -5,7 +5,7 @@
 using namespace std;
 using namespace STMatch;
 
-#define TIMEOUT_QUEUE_CAP 1000000
+#define TIMEOUT_QUEUE_CAP 1'000'000
 
 int main(int argc, char* argv[]) {
 

@@ -589,8 +589,10 @@ namespace STMatch
 				}
 				else if (stk->iter[level] < stk->slot_size[level] && is_timeout)
 				{
+					int enqueue_succ;
 					if (LANEID == 0)
 					{
+						bool ret;
 						for(; stk->iter[level] < stk->slot_size[level]; stk->iter[level]++)
 						{
 							int x, y, z;
@@ -600,20 +602,27 @@ namespace STMatch
 								z = path(stk, pat, 1);
 							else
 								z = DeletionMarker<int>::val - 1;
-							_stealing_args->queue->enqueue(x, y, z);
+							enqueue_succ = _stealing_args->queue->enqueue(x, y, z);
+
+							if (!enqueue_succ) break;
 						}
 					}
-					__syncwarp();
-
-					stk->slot_size[level] = 0;
-					stk->iter[level] = 0;
-					if (level > 0)
+					// __syncwarp();
+					enqueue_succ = __shfl_sync(0xFFFFFFFF, enqueue_succ, 0);
+					if (enqueue_succ)
 					{
-						if (threadIdx.x % WARP_SIZE == 0)
-							level--;
-						if (threadIdx.x % WARP_SIZE == 0)
-							stk->iter[level]++;
-						__syncwarp();
+						stk->slot_size[level] = 0;
+						stk->iter[level] = 0;
+						if (level > 0)
+						{
+							if (threadIdx.x % WARP_SIZE == 0)
+								level--;
+							if (threadIdx.x % WARP_SIZE == 0)
+								stk->iter[level]++;
+							__syncwarp();
+						}
+					} else { // means queue is full, do some work
+						start_clk = clock64();
 					}
 				}
 				else
@@ -670,6 +679,7 @@ namespace STMatch
 		__shared__ size_t count[NWARPS_PER_BLOCK];
 		__shared__ bool stealed[NWARPS_PER_BLOCK];
 		__shared__ int mutex_this_block[NWARPS_PER_BLOCK];
+
 
 		__shared__ StealingArgs stealing_args;
 		stealing_args.idle_warps = idle_warps;
