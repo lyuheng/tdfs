@@ -592,7 +592,6 @@ namespace STMatch
 					int enqueue_succ;
 					if (LANEID == 0)
 					{
-						bool ret;
 						for(; stk->iter[level] < stk->slot_size[level]; stk->iter[level]++)
 						{
 							int x, y, z;
