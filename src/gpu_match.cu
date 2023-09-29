@@ -6,7 +6,7 @@
 #define LANEID (threadIdx.x % WARP_SIZE)
 #define PEAK_CLK (float)1410000 // A100
 #define ELAPSED_TIME(start) (clock() - start)/PEAK_CLK // in ms
-#define TIMEOUT 10 // timeout
+#define TIMEOUT 100 // timeout
 
 namespace STMatch
 {
@@ -602,7 +602,6 @@ namespace STMatch
 							else
 								z = DeletionMarker<int>::val - 1;
 							enqueue_succ = _stealing_args->queue->enqueue(x, y, z);
-
 							if (!enqueue_succ) break;
 						}
 					}
@@ -620,7 +619,7 @@ namespace STMatch
 								stk->iter[level]++;
 							__syncwarp();
 						}
-					} else { // means queue is full, do some work
+					} else { // means queue is full, reset timer, do some work
 						start_clk = clock64();
 					}
 				}
