@@ -53,6 +53,8 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
     int num_BN[PAT_SIZE];
     int condition_order[PAT_SIZE * PAT_SIZE * 2];
     int condition_cnt[PAT_SIZE];
+
+    int vertex_labels[PAT_SIZE];
   } Pattern;
 
 
@@ -448,6 +450,8 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
 
       for (int i = 0; i < pat.nnodes; i++) {
         slot_labels[i][0] = (1 << vertex_labels[i + 1]);
+
+        pat.vertex_labels[i] = vertex_labels[i];
       }
 
       for (int i = pat.nnodes - 3; i >= 0; i--) {
