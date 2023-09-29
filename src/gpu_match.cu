@@ -306,7 +306,7 @@ namespace STMatch
 					else
 					{
 						// if labeled, check label
-						if (arg->g->vertex_label[target] != cur_label)
+						if (arg->g->vertex_label[target] != 1)
 						{
 							pred = false;
 						}
