@@ -273,7 +273,7 @@ namespace STMatch
 				pred = true;
 				target = arg->set2[il];
 
-				if (check_validity)
+				// if (check_validity)
 				{	
 					if (!LABELED)
 					{
@@ -303,7 +303,7 @@ namespace STMatch
 							}
 						}
 					}
-					else 
+					else
 					{
 						// if LABELED, check label
 						if (arg->g->vertex_label[target] != cur_label)
