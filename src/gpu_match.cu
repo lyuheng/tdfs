@@ -311,24 +311,24 @@ namespace STMatch
 						{
 							pred = false;
 						}
-						if (pred)
-						{
-							for (int k = -1; k < arg->level; ++k)
-							{
-								int cond_vertex_M = path(stk, arg->pat, k);
-								if (cond_vertex_M == target) {
-									pred = false;
-									break;
-								}
-							}
-						}
+						// if (pred)
+						// {
+						// 	for (int k = -1; k < arg->level; ++k)
+						// 	{
+						// 		int cond_vertex_M = path(stk, arg->pat, k);
+						// 		if (cond_vertex_M == target) {
+						// 			pred = false;
+						// 			break;
+						// 		}
+						// 	}
+						// }
 					}
 				}
 				if (pred) pred = bsearch_exist(arg->set1, arg->set1_size, target);
 			}
 			int loc = scanIndex(pred) + res_length;
 			// if ((arg->level < arg->pat->nnodes - 2 && pred) || ((arg->level == arg->pat->nnodes - 2) && !last_round && pred))
-				// arg->res[loc] = target;
+				arg->res[loc] = target;
 			if (threadIdx.x % WARP_SIZE == 31) // last lane's loc+pred is number of items found in this scan
 				res_length = loc + pred;
 			res_length = __shfl_sync(0xFFFFFFFF, res_length, 31);
