@@ -274,7 +274,7 @@ namespace STMatch
 				pred = true;
 				target = arg->set2[il];
 
-				// if (check_validity)
+				if (check_validity)
 				{
 					if (!LABELED)
 					{
@@ -307,10 +307,11 @@ namespace STMatch
 					else
 					{
 						// if LABELED, check label
-						if (arg->g->vertex_label[target] != 1)
+						if (arg->g->vertex_label[target] != cur_label)
 						{
 							pred = false;
 						}
+						// STMatch does no check 
 						// if (pred)
 						// {
 						// 	for (int k = -1; k < arg->level; ++k)
