@@ -402,6 +402,7 @@ namespace STMatch
 			stk->slot_size[0] = cnt;
 		} else {
 			atomicAdd(&g->cur, -JOB_CHUNK_SIZE);
+			stk->slot_size[0] = 0;
 		}
 	}
 
