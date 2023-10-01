@@ -187,7 +187,6 @@ namespace STMatch {
                     break;
                   }
                 }
-
                 if (valid) {
                   g.src_vtx[j] = r;
                 }
