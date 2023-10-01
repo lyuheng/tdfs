@@ -166,7 +166,7 @@ namespace STMatch {
     void build_src_vtx(PatternPreprocessor &p)
     {
       g.src_vtx = new int[g.nedges];
-      int ttl = 0;
+      long ttl = 0;
 
       for (int r = 0; r < g.nnodes; ++r)
       {
