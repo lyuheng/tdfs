@@ -380,7 +380,7 @@ namespace STMatch
 			{
 				graph_node_t c = g->colidx[i];
 				graph_node_t r = g->src_vtx[i];
-				if (c == -1)
+				if (r == -1)
 					continue;
 				// if (g->rowptr[r + 1] - g->rowptr[r] >= pat->degree[0] && g->rowptr[c + 1] - g->rowptr[c] >= pat->degree[1]) {
                 // 	bool valid = false;
