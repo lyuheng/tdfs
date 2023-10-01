@@ -92,7 +92,7 @@ int main(int argc, char* argv[]) {
 
 
   cudaEventRecord(stop);
-
+  
   cudaEventSynchronize(stop);
 
   float milliseconds = 0;
