@@ -13,7 +13,7 @@ int main(int argc, char* argv[]) {
 
   STMatch::GraphPreprocessor g(argv[1]);
   STMatch::PatternPreprocessor p(argv[2]);
-  g.build_src_vtx(&p);
+  g.build_src_vtx(p);
 
 
   std::cout << "conditions: " << std::endl;

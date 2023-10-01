@@ -164,27 +164,27 @@ namespace STMatch {
       delete[] lb;
     }
 
-    void build_src_vtx(PatternPreprocessor *p)
+    void build_src_vtx(PatternPreprocessor &p)
     {
       g.src_vtx = new int[g.nedges];
 
       for (int r = 0; r < g.nnodes; ++r)
       {
-        for (int j = g.rowptr[r]; j < g.rowptr[r + 1]; ++j)
+        for (graph_edge_t j = g.rowptr[r]; j < g.rowptr[r + 1]; ++j)
         {
           int c = g.colidx[j];
-          if ((!LABELED && p->partial[0][0] == 1 && r < c) || LABELED || p->partial[0][0] != 1)
-          {
-            if (!LABELED || (g.vertex_label[r] == p->pat.vertex_labels[0] && g.vertex_label[c] == p->pat.vertex_labels[1]) )
-            {
+          // if ((!LABELED && p.partial[0][0] == 1 && r < c) || LABELED || p.partial[0][0] != 1)
+          // {
+          //   if (!LABELED || (g.vertex_label[r] == p.pat.vertex_labels[0] && g.vertex_label[c] == p.pat.vertex_labels[1]) )
+          //   {
               g.src_vtx[j] = r;
-            }
-            else
-              g.src_vtx[j] = -1;
-          }
-          else {
-            g.src_vtx[j] = -1;
-          }
+          //   }
+          //   else
+          //     g.src_vtx[j] = -1;
+          // }
+          // else {
+          //   g.src_vtx[j] = -1;
+          // }
         }
       }
     }
