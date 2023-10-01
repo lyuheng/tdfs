@@ -385,7 +385,7 @@ namespace STMatch
 					graph_node_t c = g->colidx[i];
 					graph_node_t r = g->src_vtx[i];
 					
-					if ((!LABELED && pat->partial[0][0] == 1 && r < c) || LABELED || pat->partial[0][0] != 1)
+					if ((!LABELED && pat->partial_ori[0][0] == 1 && r < c) || LABELED || pat->partial_ori[0][0] != 1)
           			{
             			if (!LABELED || (g->vertex_label[r] == pat->vertex_labels[0] && g->vertex_label[c] == pat->vertex_labels[1]) )
 						{

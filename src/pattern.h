@@ -54,7 +54,7 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
     int condition_order[PAT_SIZE * PAT_SIZE * 2];
     int condition_cnt[PAT_SIZE];
     int vertex_labels[PAT_SIZE];
-    bitarray32 partial[PAT_SIZE][PAT_SIZE];
+    bitarray32 partial_ori[PAT_SIZE][PAT_SIZE];
   } Pattern;
 
 
@@ -331,7 +331,7 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
       }
       for (int i=0; i<pat.nnodes; ++i) {
         for (int j=0; j<pat.nnodes; ++j) {
-          pat.partial[i][j] = partial[i][j];
+          pat.partial_ori[i][j] = partial[i][j];
         }
       }
       //================== execute condition array ==================
