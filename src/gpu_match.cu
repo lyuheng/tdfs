@@ -382,11 +382,11 @@ namespace STMatch
 				graph_node_t c = g->src_vtx[i];
 				if (c == -1) 
 					continue;
-				if (g.rowptr[r + 1] - g.rowptr[r] >= pat->degree[0] && g.rowptr[c + 1] - g.rowptr[c] >= p.pat.degree[1]) {
+				if (g->rowptr[r + 1] - g->rowptr[r] >= pat->degree[0] && g->rowptr[c + 1] - g->rowptr[c] >= pat->degree[1]) {
                 	bool valid = false;
-                	for (graph_edge_t d = g.rowptr[c]; d < g.rowptr[c + 1]; d++) {
-                  		graph_node_t v = g.colidx[d];
-						if (g.rowptr[v + 1] - g.rowptr[v] >= pat->degree[2]) {
+                	for (graph_edge_t d = g->rowptr[c]; d < g->rowptr[c + 1]; d++) {
+                  		graph_node_t v = g->colidx[d];
+						if (g->rowptr[v + 1] - g->rowptr[v] >= pat->degree[2]) {
 							valid = true;
 							break;
 						}
