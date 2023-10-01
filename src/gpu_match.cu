@@ -426,6 +426,8 @@ namespace STMatch
 		if (level == 0)
 		{
 			// TODO: change to warp
+
+			graph_node_t cur_job, njobs;
 			
 			if (threadIdx.x % WARP_SIZE == 0)
 			{
