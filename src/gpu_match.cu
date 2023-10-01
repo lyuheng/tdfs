@@ -388,7 +388,7 @@ namespace STMatch
 						continue;
 
 
-					if ((!LABELED && pat->partial[0][0] == 1 && r < c) || LABELED || pat->partial[0][0] != 1)
+					if ((!LABELED && r < c) || LABELED)
           			{
             			if (!LABELED || (g->vertex_label[r] == pat->vertex_labels[0] && g->vertex_label[c] == pat->vertex_labels[1]) )
 						{
