@@ -377,14 +377,14 @@ namespace STMatch
 			cnt = 0;
 			if (cur_pos < g->nedges)
 			{
-				unsigned long long end = cur_pos + JOB_CHUNK_SIZE;
+				long end = cur_pos + JOB_CHUNK_SIZE;
 				if (end > g->nedges)
 					end = g->nedges;
-				for (unsigned long long i = cur_pos; i < end; ++i)
+				for (long i = cur_pos; i < end; ++i)
 				{
 					graph_node_t c = g->colidx[i];
 					graph_node_t r = g->src_vtx[i];
-					if (r == -1)
+					if (r == -10000)
 						continue;
 					// if (g->rowptr[r + 1] - g->rowptr[r] >= pat->degree[0] && g->rowptr[c + 1] - g->rowptr[c] >= pat->degree[1]) {
 					// 	bool valid = false;
