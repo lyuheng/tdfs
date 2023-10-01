@@ -20,7 +20,7 @@ namespace STMatch {
   inline constexpr int NWARPS_PER_BLOCK = (BLOCK_DIM / WARP_SIZE);
   inline constexpr int NWARPS_TOTAL = ((GRID_DIM * BLOCK_DIM + WARP_SIZE - 1) / WARP_SIZE);
 
-  inline constexpr graph_node_t JOB_CHUNK_SIZE = 8;
+  inline constexpr graph_node_t JOB_CHUNK_SIZE = 1;
   //static_assert(2 * JOB_CHUNK_SIZE <= GRAPH_DEGREE); 
 
   // this is the maximum unroll size

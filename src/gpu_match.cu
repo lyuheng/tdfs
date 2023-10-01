@@ -397,8 +397,8 @@ namespace STMatch
 					// 	}
 						// if (valid)
 						{
-							stk->slot_storage[0][cnt] = c;
-							stk->slot_storage[0][JOB_CHUNK_SIZE + cnt] = r;
+							stk->slot_storage[0][cnt] = r;
+							stk->slot_storage[0][JOB_CHUNK_SIZE + cnt] = c;
 							cnt++;
 						}
 					// }
