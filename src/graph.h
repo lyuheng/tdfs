@@ -190,10 +190,10 @@ namespace STMatch {
                 if (valid) {
                   g.src_vtx[j] = r;
                 }
-                else 
+                else
                   g.src_vtx[j] = -1;
-              } else 
-                 g.src_vtx[j] = -1;
+              } else
+                  g.src_vtx[j] = -1;
             }
             else
               g.src_vtx[j] = -1;
