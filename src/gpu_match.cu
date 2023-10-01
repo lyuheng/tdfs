@@ -345,7 +345,7 @@ namespace STMatch
 		}
 	}
 
-	__forceinline__ __device__ void get_job(Graph *g, Pattern *pat, CallStack *stk)
+	__forceinline__ __device__ void get_job(Graph *g, Pattern *pat, CallStack *stk, JobQueue *q)
 	// __forceinline__ __device__ void get_job(JobQueue *q, graph_node_t &cur_pos, graph_node_t &njobs)
 	{
 		// lock(&(q->mutex));
@@ -373,7 +373,7 @@ namespace STMatch
 		int cnt;
 		while (true)
 		{
-			unsigned long long cur_pos = atomicAdd(&g->cur, JOB_CHUNK_SIZE);
+			unsigned long long cur_pos = atomicAdd(&q->cur, JOB_CHUNK_SIZE);
 			cnt = 0;
 			if (cur_pos < g->nedges)
 			{
@@ -384,7 +384,7 @@ namespace STMatch
 				{
 					graph_node_t c = g->colidx[i];
 					graph_node_t r = g->src_vtx[i];
-					if (r == -10000)
+					if (r == -1)
 						continue;
 					// if (g->rowptr[r + 1] - g->rowptr[r] >= pat->degree[0] && g->rowptr[c + 1] - g->rowptr[c] >= pat->degree[1]) {
 					// 	bool valid = false;
@@ -408,7 +408,7 @@ namespace STMatch
 				if (cnt > 0)
 					break;
 			} else {
-				atomicAdd(&g->cur, -JOB_CHUNK_SIZE);
+				atomicAdd(&q->cur, -JOB_CHUNK_SIZE);
 				stk->slot_size[0] = 0;
 				break;
 			}
@@ -447,7 +447,7 @@ namespace STMatch
 				}
 				else
 				{
-					get_job(g, pat, stk);
+					get_job(g, pat, stk, q);
 
 					// get_job(q, cur_job, njobs);
 
@@ -750,7 +750,6 @@ namespace STMatch
 		__shared__ size_t count[NWARPS_PER_BLOCK];
 		__shared__ bool stealed[NWARPS_PER_BLOCK];
 		__shared__ int mutex_this_block[NWARPS_PER_BLOCK];
-
 
 		__shared__ StealingArgs stealing_args;
 		stealing_args.idle_warps = idle_warps;

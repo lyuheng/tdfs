@@ -12,7 +12,7 @@ namespace STMatch {
     Job* q;
     int start_level;
     graph_node_t length;
-    graph_node_t cur;
+    graph_edge_t cur;
     int mutex = 0;
   } JobQueue;
 
