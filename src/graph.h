@@ -166,7 +166,6 @@ namespace STMatch {
     void build_src_vtx(PatternPreprocessor &p)
     {
       g.src_vtx = new int[g.nedges];
-      long ttl = 0;
 
       for (int r = 0; r < g.nnodes; ++r)
       {
@@ -179,12 +178,10 @@ namespace STMatch {
             if (!LABELED || (g.vertex_label[r] == p.pat.vertex_labels[0] && g.vertex_label[c] == p.pat.vertex_labels[1]) )
             {
               g.src_vtx[j] = r;
-              ttl++;
             }
           }
         }
       }
-      std::cout << "ttl = " << ttl << std::endl;
     }
   };
 }

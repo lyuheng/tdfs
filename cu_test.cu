@@ -12,14 +12,16 @@ int main(int argc, char* argv[]) {
   cudaSetDevice(0);
 
 
+  STMatch::GraphPreprocessor g(argv[1]);
+  STMatch::PatternPreprocessor p(argv[2]);
+
+  // timer starts here
   cudaEvent_t start, stop;
   cudaEventCreate(&start);
   cudaEventCreate(&stop);
-
   cudaEventRecord(start);
 
-  STMatch::GraphPreprocessor g(argv[1]);
-  STMatch::PatternPreprocessor p(argv[2]);
+
   g.build_src_vtx(p);
 
 
