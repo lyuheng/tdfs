@@ -455,10 +455,10 @@ namespace STMatch
                     {
                         for (int j = 0; j < 2; j++)
                         {
-                            stk->slot_storage[0][k][i + JOB_CHUNK_SIZE * j] = (q->q[cur_job + i].nodes)[j]; // matches of 2 nodes are saved at level 0
+                            stk->slot_storage[0][i + JOB_CHUNK_SIZE * j] = (q->q[cur_job + i].nodes)[j]; // matches of 2 nodes are saved at level 0
                         }
                     }
-                    stk->slot_size[0][k] = njobs;
+                    stk->slot_size[0] = njobs;
 				}
 			}
 			__syncwarp();
