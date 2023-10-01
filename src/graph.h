@@ -188,6 +188,4 @@ namespace STMatch {
       }
     }
   };
-
-
 }
