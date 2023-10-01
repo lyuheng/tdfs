@@ -11,6 +11,13 @@ int main(int argc, char* argv[]) {
 
   cudaSetDevice(0);
 
+
+  cudaEvent_t start, stop;
+  cudaEventCreate(&start);
+  cudaEventCreate(&stop);
+
+  cudaEventRecord(start);
+
   STMatch::GraphPreprocessor g(argv[1]);
   STMatch::PatternPreprocessor p(argv[2]);
   g.build_src_vtx(p);
@@ -78,11 +85,6 @@ int main(int argc, char* argv[]) {
   gpu_timeout_queue->resetQueue();
   
   
-  cudaEvent_t start, stop;
-  cudaEventCreate(&start);
-  cudaEventCreate(&stop);
-
-  cudaEventRecord(start);
 
   //cout << "shared memory usage: " << sizeof(Graph) << " " << sizeof(Pattern) << " " << sizeof(JobQueue) << " " << sizeof(CallStack) * NWARPS_PER_BLOCK << " " << NWARPS_PER_BLOCK * 33 * sizeof(int) << " Bytes" << endl;
 
