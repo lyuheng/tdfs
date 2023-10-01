@@ -345,7 +345,7 @@ namespace STMatch
 		}
 	}
 
-	__forceinline__ __device__ void get_job(JobQueue *q, graph_node_t &cur_pos, graph_node_t &njobs)
+	__forceinline__ __device__ void get_job(Graph *g, Pattern *pat, CallStack *stk)
 	{
 		// lock(&(q->mutex));
 		// cur_pos = q->cur;
@@ -355,18 +355,54 @@ namespace STMatch
 		// njobs = q->cur - cur_pos;
 		// unlock(&(q->mutex));
 
-		cur_pos = atomicAdd(&q->cur, JOB_CHUNK_SIZE);
-		if (cur_pos < q->length) {
-			int tmp = cur_pos + JOB_CHUNK_SIZE;
-			if (tmp > q->length) 
-				tmp = q->length;
-			njobs = tmp - cur_pos;
+		// cur_pos = atomicAdd(&q->cur, JOB_CHUNK_SIZE);
+		// if (cur_pos < q->length) {
+		// 	int tmp = cur_pos + JOB_CHUNK_SIZE;
+		// 	if (tmp > q->length) 
+		// 		tmp = q->length;
+		// 	njobs = tmp - cur_pos;
+		// }
+        // else
+        // {
+	    //     atomicSub(&q->cur, JOB_CHUNK_SIZE);
+        //     njobs = 0;
+        // }
+
+
+		graph_edge_t cur_pos = atomicAdd(&g->cur, JOB_CHUNK_SIZE);
+		int cnt = 0;
+		if (cur_pos < g->nedges)
+		{
+			graph_edge_t end = cur_pos + JOB_CHUNK_SIZE;
+			if (end > g->nedges) 
+				end = g->nedges;
+			for (int i = cur_pos; i < end; ++i)
+			{
+				graph_node_t r = g->colidx[i];
+				graph_node_t c = g->src_vtx[i];
+				if (c == -1) 
+					continue;
+				if (g.rowptr[r + 1] - g.rowptr[r] >= pat->degree[0] && g.rowptr[c + 1] - g.rowptr[c] >= p.pat.degree[1]) {
+                	bool valid = false;
+                	for (graph_edge_t d = g.rowptr[c]; d < g.rowptr[c + 1]; d++) {
+                  		graph_node_t v = g.colidx[d];
+						if (g.rowptr[v + 1] - g.rowptr[v] >= pat->degree[2]) {
+							valid = true;
+							break;
+						}
+					}
+					if (valid)
+					{
+						stk->slot_storage[0][cnt] = r;
+						stk->slot_storage[0][JOB_CHUNK_SIZE + cnt] = c;
+						cnt++;
+					}
+				}
+			}
+			stk->slot_size[0] = cnt;
+		} else {
+			atomicSub(&g->cur, JOB_CHUNK_SIZE);
 		}
-        else
-        {
-	        atomicSub(&q->cur, JOB_CHUNK_SIZE);
-            njobs = 0;
-        }
 	}
 
 	__device__ void extend(Graph *g, Pattern *pat, CallStack *stk, JobQueue *q, pattern_node_t level, long &start_clk, 
@@ -379,8 +415,6 @@ namespace STMatch
 
 		if (level == 0)
 		{
-			graph_node_t cur_job, njobs;
-
 			// TODO: change to warp
 			
 			if (threadIdx.x % WARP_SIZE == 0)
@@ -401,16 +435,7 @@ namespace STMatch
 				}
 				else
 				{
-					get_job(q, cur_job, njobs);
-
-					for (size_t i = 0; i < njobs; i++)
-					{
-						for (int j = 0; j < 2; j++)
-						{
-							stk->slot_storage[0][i + JOB_CHUNK_SIZE * j] = (q->q[cur_job + i].nodes)[j];
-						}
-					}
-					stk->slot_size[0] = njobs;
+					get_job(g, pat, stk);
 				}
 			}
 			__syncwarp();

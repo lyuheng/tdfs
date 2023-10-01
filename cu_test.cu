@@ -13,6 +13,7 @@ int main(int argc, char* argv[]) {
 
   STMatch::GraphPreprocessor g(argv[1]);
   STMatch::PatternPreprocessor p(argv[2]);
+  g.build_src_vtx(&p);
 
 
   std::cout << "conditions: " << std::endl;
@@ -27,7 +28,8 @@ int main(int argc, char* argv[]) {
   // copy graph and pattern to GPU global memory
   Graph* gpu_graph = g.to_gpu();
   Pattern* gpu_pattern = p.to_gpu();
-  JobQueue* gpu_queue = JobQueuePreprocessor(g.g, p).to_gpu();
+  // JobQueue* gpu_queue = JobQueuePreprocessor(g.g, p).to_gpu();
+  JobQueue* gpu_queue = nullptr;
   CallStack* gpu_callstack;
 
   // allocate the callstack for all warps in global memory
