@@ -191,15 +191,15 @@ namespace STMatch {
                   g.src_vtx[j] = r;
                 }
                 else
-                  g.src_vtx[j] = -1;
+                  g.src_vtx[j] = r;
               } else
-                  g.src_vtx[j] = -1;
+                  g.src_vtx[j] = r;
             }
             else
-              g.src_vtx[j] = -1;
+              g.src_vtx[j] = r;
           }
           else {
-            g.src_vtx[j] = -1;
+            g.src_vtx[j] = r;
           }
         }
       }
