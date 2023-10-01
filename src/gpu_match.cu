@@ -367,42 +367,48 @@ namespace STMatch
 	    //     atomicSub(&q->cur, JOB_CHUNK_SIZE);
         //     njobs = 0;
         // }
-
-
-		unsigned long long cur_pos = atomicAdd(&g->cur, JOB_CHUNK_SIZE);
-		int cnt = 0;
-		if (cur_pos < g->nedges)
+		int cnt;
+		while (true)
 		{
-			unsigned long long end = cur_pos + JOB_CHUNK_SIZE;
-			if (end > g->nedges)
-				end = g->nedges;
-			for (unsigned long long i = cur_pos; i < end; ++i)
+			unsigned long long cur_pos = atomicAdd(&g->cur, JOB_CHUNK_SIZE);
+			cnt = 0;
+			if (cur_pos < g->nedges)
 			{
-				graph_node_t c = g->colidx[i];
-				graph_node_t r = g->src_vtx[i];
-				if (r == -1)
-					continue;
-				// if (g->rowptr[r + 1] - g->rowptr[r] >= pat->degree[0] && g->rowptr[c + 1] - g->rowptr[c] >= pat->degree[1]) {
-                // 	bool valid = false;
-                // 	for (graph_edge_t d = g->rowptr[c]; d < g->rowptr[c + 1]; d++) {
-                //   		graph_node_t v = g->colidx[d];
-				// 		if (g->rowptr[v + 1] - g->rowptr[v] >= pat->degree[2]) {
-				// 			valid = true;
-				// 			break;
-				// 		}
-				// 	}
-					// if (valid)
-					{
-						stk->slot_storage[0][cnt] = r;
-						stk->slot_storage[0][JOB_CHUNK_SIZE + cnt] = c;
-						cnt++;
-					}
-				// }
+				unsigned long long end = cur_pos + JOB_CHUNK_SIZE;
+				if (end > g->nedges)
+					end = g->nedges;
+				for (unsigned long long i = cur_pos; i < end; ++i)
+				{
+					graph_node_t c = g->colidx[i];
+					graph_node_t r = g->src_vtx[i];
+					if (r == -1)
+						continue;
+					// if (g->rowptr[r + 1] - g->rowptr[r] >= pat->degree[0] && g->rowptr[c + 1] - g->rowptr[c] >= pat->degree[1]) {
+					// 	bool valid = false;
+					// 	for (graph_edge_t d = g->rowptr[c]; d < g->rowptr[c + 1]; d++) {
+							// graph_node_t v = g->colidx[d];
+					// 		if (g->rowptr[v + 1] - g->rowptr[v] >= pat->degree[2]) {
+					// 			valid = true;
+					// 			break;
+					// 		}
+					// 	}
+						// if (valid)
+						{
+							stk->slot_storage[0][cnt] = r;
+							stk->slot_storage[0][JOB_CHUNK_SIZE + cnt] = c;
+							cnt++;
+						}
+					// }
+				}
+				stk->slot_size[0] = cnt;
+
+				if (cnt > 0) 
+					break;
+			} else {
+				atomicAdd(&g->cur, -JOB_CHUNK_SIZE);
+				stk->slot_size[0] = 0;
+				break;
 			}
-			stk->slot_size[0] = cnt;
-		} else {
-			atomicAdd(&g->cur, -JOB_CHUNK_SIZE);
-			stk->slot_size[0] = 0;
 		}
 	}
 
