@@ -386,22 +386,22 @@ namespace STMatch
 					graph_node_t r = g->src_vtx[i];
 					if (r == -1)
 						continue;
-					// if (g->rowptr[r + 1] - g->rowptr[r] >= pat->degree[0] && g->rowptr[c + 1] - g->rowptr[c] >= pat->degree[1]) {
-					// 	bool valid = false;
-					// 	for (graph_edge_t d = g->rowptr[c]; d < g->rowptr[c + 1]; d++) {
-							// graph_node_t v = g->colidx[d];
-					// 		if (g->rowptr[v + 1] - g->rowptr[v] >= pat->degree[2]) {
-					// 			valid = true;
-					// 			break;
-					// 		}
-					// 	}
-						// if (valid)
+					if (g->rowptr[r + 1] - g->rowptr[r] >= pat->degree[0] && g->rowptr[c + 1] - g->rowptr[c] >= pat->degree[1]) {
+						bool valid = false;
+						for (graph_edge_t d = g->rowptr[c]; d < g->rowptr[c + 1]; d++) {
+							graph_node_t v = g->colidx[d];
+							if (g->rowptr[v + 1] - g->rowptr[v] >= pat->degree[2]) {
+								valid = true;
+								break;
+							}
+						}
+						if (valid)
 						{
 							stk->slot_storage[0][cnt] = r;
 							stk->slot_storage[0][JOB_CHUNK_SIZE + cnt] = c;
 							cnt++;
 						}
-					// }
+					}
 				}
 				stk->slot_size[0] = cnt;
 

@@ -178,20 +178,8 @@ namespace STMatch {
           {
             if (!LABELED || (g.vertex_label[r] == p.pat.vertex_labels[0] && g.vertex_label[c] == p.pat.vertex_labels[1]) )
             {
-              if (g.rowptr[r + 1] - g.rowptr[r] >= p.pat.degree[0] && g.rowptr[c + 1] - g.rowptr[c] >= p.pat.degree[1]) {
-                bool valid = false;
-                for (graph_edge_t d = g.rowptr[c]; d < g.rowptr[c + 1]; d++) {
-                  graph_node_t v = g.colidx[d];
-                  if (g.rowptr[v + 1] - g.rowptr[v] >= p.pat.degree[2]) {
-                    valid = true;
-                    break;
-                  }
-                }
-                if (valid) {
-                  g.src_vtx[j] = r;
-                  ttl ++;
-                }
-              }
+              g.src_vtx[j] = r;
+              ttl++;
             }
           }
         }
