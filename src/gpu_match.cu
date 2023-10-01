@@ -369,11 +369,11 @@ namespace STMatch
         // }
 
 
-		graph_edge_t cur_pos = atomicAdd(&g->cur, JOB_CHUNK_SIZE);
+		unsigned long long cur_pos = atomicAdd(&g->cur, JOB_CHUNK_SIZE);
 		int cnt = 0;
 		if (cur_pos < g->nedges)
 		{
-			graph_edge_t end = cur_pos + JOB_CHUNK_SIZE;
+			unsigned long long end = cur_pos + JOB_CHUNK_SIZE;
 			if (end > g->nedges) 
 				end = g->nedges;
 			for (int i = cur_pos; i < end; ++i)

@@ -8,6 +8,7 @@
 #include <iostream>
 #include <cassert>
 #include "config.h"
+#include "pattern.h"
 
 
 namespace STMatch {
@@ -20,7 +21,7 @@ namespace STMatch {
     graph_edge_t* rowptr;
     graph_node_t* colidx;
     graph_node_t* src_vtx;
-    graph_edge_t cur = 0;
+    unsigned long long cur = 0;
   } Graph;
 
   struct GraphPreprocessor {
