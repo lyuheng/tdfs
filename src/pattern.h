@@ -53,8 +53,8 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
     int num_BN[PAT_SIZE];
     int condition_order[PAT_SIZE * PAT_SIZE * 2];
     int condition_cnt[PAT_SIZE];
-
     int vertex_labels[PAT_SIZE];
+    bitarray32 partial[PAT_SIZE][PAT_SIZE];
   } Pattern;
 
 
@@ -327,6 +327,11 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
           if (L_adj_matrix_[j][level] == 1) {
             partial[level - 1][0] |= (1 << j);
           }
+        }
+      }
+      for (int i=0; i<pat.nnodes; ++i) {
+        for (int j=0; j<pat.nnodes; ++j) {
+          pat.partial[i][j] = partial[i][j];
         }
       }
       //================== execute condition array ==================

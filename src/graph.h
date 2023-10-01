@@ -176,9 +176,7 @@ namespace STMatch {
           // if ((!LABELED && p.partial[0][0] == 1 && r < c) || LABELED || p.partial[0][0] != 1)
           // {
           //   if (!LABELED || (g.vertex_label[r] == p.pat.vertex_labels[0] && g.vertex_label[c] == p.pat.vertex_labels[1]) )
-            {
               g.src_vtx[j] = r;
-            }
           // }
         }
       }
