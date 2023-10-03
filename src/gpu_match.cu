@@ -276,50 +276,58 @@ namespace STMatch
 
 				if (check_validity)
 				{
-					if (!LABELED)
+					int target_deg = arg->g->rowptr[target + 1] - arg->g->rowptr[target]; 
+					if (target_deg < arg->pat->degree[actual_lvl])
 					{
-						// if unlabeled, check automorphism
-						for (int k = 0; k < arg->pat->condition_cnt[actual_lvl]; ++k)
-						{
-							int cond = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k];
-							int cond_lvl = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k + 1];
-							int cond_vertex_M = path(stk, arg->pat, cond_lvl - 1);
-							if (cond == CondOperator::LESS_THAN) {
-								if (cond_vertex_M <= target) {
-									pred = false;
-									break;
-								}
-							}
-							else if (cond == CondOperator::LARGER_THAN) {
-								if (cond_vertex_M >= target) {
-									pred = false;
-									break;
-								}
-							}
-							else if (cond == CondOperator::NON_EQUAL) {
-								if (cond_vertex_M == target) {
-									pred = false;
-									break;
-								}
-							}
-						}
+						pred = false;
 					}
-					else
-					{
-						// if LABELED, check label
-						if (arg->g->vertex_label[target] != cur_label)
+
+					if (pred) {	
+						if (!LABELED)
 						{
-							pred = false;
-						}
-						// STMatch does no check 
-						if (pred)
-						{
-							for (int k = -1; k < arg->level; ++k)
+							// if unlabeled, check automorphism
+							for (int k = 0; k < arg->pat->condition_cnt[actual_lvl]; ++k)
 							{
-								int cond_vertex_M = path(stk, arg->pat, k);
-								if (cond_vertex_M == target) {
-									pred = false;
-									break;
+								int cond = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k];
+								int cond_lvl = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k + 1];
+								int cond_vertex_M = path(stk, arg->pat, cond_lvl - 1);
+								if (cond == CondOperator::LESS_THAN) {
+									if (cond_vertex_M <= target) {
+										pred = false;
+										break;
+									}
+								}
+								else if (cond == CondOperator::LARGER_THAN) {
+									if (cond_vertex_M >= target) {
+										pred = false;
+										break;
+									}
+								}
+								else if (cond == CondOperator::NON_EQUAL) {
+									if (cond_vertex_M == target) {
+										pred = false;
+										break;
+									}
+								}
+							}
+						}
+						else
+						{
+							// if LABELED, check label
+							if (arg->g->vertex_label[target] != cur_label)
+							{
+								pred = false;
+							}
+							// STMatch does no check 
+							if (pred)
+							{
+								for (int k = -1; k < arg->level; ++k)
+								{
+									int cond_vertex_M = path(stk, arg->pat, k);
+									if (cond_vertex_M == target) {
+										pred = false;
+										break;
+									}
 								}
 							}
 						}
