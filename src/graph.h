@@ -116,13 +116,6 @@ namespace STMatch {
       memcpy(g.colidx, colidx.data(), sizeof(graph_node_t) * colidx.size());
 
      // std::cout << "Graph read complete. Number of vertex: " << g.nnodes << std::endl;
-
-      int deg_le_2 = 0;
-      for (int i = 0; i < g.nnodes; ++i) {
-        if (g.rowptr[i + 1] - g.rowptr[i] <= 2) 
-          deg_le_2++;
-     }
-     std::cout << "there're " << deg_le_2 << " vertices degree <= 2, percentage: " << (float)deg_le_2/g.nnodes * 100 << "%" << std::endl;
     }
 
 
@@ -168,6 +161,14 @@ namespace STMatch {
         g.vertex_label[i] = lb[i];
       }
       delete[] lb;
+
+      
+      int deg_le_2 = 0;
+      for (int i = 0; i < g.nnodes; ++i) {
+        if (g.rowptr[i + 1] - g.rowptr[i] <= 2) 
+          deg_le_2++;
+     }
+     std::cout << "there're " << deg_le_2 << " vertices degree <= 2, percentage: " << (float)deg_le_2/g.nnodes * 100 << "%" << std::endl;
     }
 
     void build_src_vtx(PatternPreprocessor &p)
