@@ -162,13 +162,25 @@ namespace STMatch {
       }
       delete[] lb;
 
-      
+
       int deg_le_2 = 0;
       for (int i = 0; i < g.nnodes; ++i) {
         if (g.rowptr[i + 1] - g.rowptr[i] <= 2) 
           deg_le_2++;
      }
      std::cout << "there're " << deg_le_2 << " vertices degree <= 2, percentage: " << (float)deg_le_2/g.nnodes * 100 << "%" << std::endl;
+     int deg_le_3 = 0;
+      for (int i = 0; i < g.nnodes; ++i) {
+        if (g.rowptr[i + 1] - g.rowptr[i] <= 3) 
+          deg_le_3++;
+     }
+     std::cout << "there're " << deg_le_3 << " vertices degree <= 3, percentage: " << (float)deg_le_3/g.nnodes * 100 << "%" << std::endl;
+     int deg_le_4 = 0;
+      for (int i = 0; i < g.nnodes; ++i) {
+        if (g.rowptr[i + 1] - g.rowptr[i] <= 4) 
+          deg_le_4++;
+     }
+     std::cout << "there're " << deg_le_4 << " vertices degree <= 4, percentage: " << (float)deg_le_4/g.nnodes * 100 << "%" << std::endl;
     }
 
     void build_src_vtx(PatternPreprocessor &p)
