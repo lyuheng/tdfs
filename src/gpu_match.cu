@@ -325,16 +325,16 @@ namespace STMatch
 						// 	}
 						// }
 					}
-					if (pred)
-					{
-						int target_deg = arg->g->rowptr[target + 1] - arg->g->rowptr[target]; 
-						if (target_deg < cur_degree)
-						{
-							pred = false;
-						}
-					}
 				}
 				if (pred) pred = bsearch_exist(arg->set1, arg->set1_size, target);
+				if (pred)
+				{
+					int target_deg = arg->g->rowptr[target + 1] - arg->g->rowptr[target]; 
+					if (target_deg < cur_degree)
+					{
+						pred = false;
+					}
+				}
 			}
 			int loc = scanIndex(pred) + res_length;
 			if ((arg->level < arg->pat->nnodes - 2 && pred) || ((arg->level == arg->pat->nnodes - 2) && !last_round && pred))
