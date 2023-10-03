@@ -264,6 +264,7 @@ namespace STMatch
 		bool pred;
 		int target;
 		int cur_label = arg->pat->vertex_labels[actual_lvl];
+		int cur_degree = arg->pat->degree[actual_lvl];
 
 		for (int i = 0; i < arg->set2_size; i += WARP_SIZE)
 		{
@@ -277,12 +278,12 @@ namespace STMatch
 				if (check_validity)
 				{
 					int target_deg = arg->g->rowptr[target + 1] - arg->g->rowptr[target]; 
-					if (target_deg < arg->pat->degree[actual_lvl])
+					if (target_deg < cur_degree)
 					{
 						pred = false;
 					}
 
-					if (pred) {	
+					if (pred) {
 						if (!LABELED)
 						{
 							// if unlabeled, check automorphism
