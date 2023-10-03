@@ -312,17 +312,17 @@ namespace STMatch
 							pred = false;
 						}
 						// STMatch does no check 
-						if (pred)
-						{
-							for (int k = -1; k < arg->level; ++k)
-							{
-								int cond_vertex_M = path(stk, arg->pat, k);
-								if (cond_vertex_M == target) {
-									pred = false;
-									break;
-								}
-							}
-						}
+						// if (pred)
+						// {
+						// 	for (int k = -1; k < arg->level; ++k)
+						// 	{
+						// 		int cond_vertex_M = path(stk, arg->pat, k);
+						// 		if (cond_vertex_M == target) {
+						// 			pred = false;
+						// 			break;
+						// 		}
+						// 	}
+						// }
 					}
 				}
 				if (pred) pred = bsearch_exist(arg->set1, arg->set1_size, target);
