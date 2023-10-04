@@ -353,7 +353,6 @@ namespace STMatch
 		for (int i = LANEID; i < num_neighbor; i += WARP_SIZE)
 		{
 			// if unlabeled, check automorphism
-			pred = false;
 			int il = i + LANEID;
 			if (il < num_neighbor)
 			{
@@ -551,7 +550,7 @@ namespace STMatch
 				assert(false)
 			else if (pat->num_BN[actual_lvl] == 1)
 			{
-				arr_copy(stk, pat);
+				arr_copy(stk);
 			}
 			else
 			{
