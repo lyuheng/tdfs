@@ -66,11 +66,11 @@ public:
         {
             unsigned int pos = atomicAdd(&back_, 3) % size_;
             while (atomicCAS(queue_ + pos, DeletionMarker<int>::val, x) != DeletionMarker<int>::val)
-                // __nanosleep(10);
+                __nanosleep(1);
             while (atomicCAS(queue_ + pos + 1, DeletionMarker<int>::val, y) != DeletionMarker<int>::val)
-                // __nanosleep(10);
+                __nanosleep(1);
             while (atomicCAS(queue_ + pos + 2, DeletionMarker<int>::val, z) != DeletionMarker<int>::val)
-                // __nanosleep(10);
+                __nanosleep(1);
             return true;
         }
         else
@@ -92,11 +92,11 @@ public:
         }
         unsigned int pos = atomicAdd(&front_, 3) % size_;
         while ((x = atomicExch(queue_ + pos, DeletionMarker<int>::val)) == DeletionMarker<int>::val)
-            // __nanosleep(10);
+            __nanosleep(1);
         while ((y = atomicExch(queue_ + pos + 1, DeletionMarker<int>::val)) == DeletionMarker<int>::val)
-            // __nanosleep(10);
+            __nanosleep(1);
         while ((z = atomicExch(queue_ + pos + 2, DeletionMarker<int>::val)) == DeletionMarker<int>::val)
-            // __nanosleep(10);
+            __nanosleep(1);
         return true;
     }
 
