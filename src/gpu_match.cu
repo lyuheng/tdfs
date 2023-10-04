@@ -337,7 +337,7 @@ namespace STMatch
 		*arg->res_size = res_length;
 	}
 
-	__forceinline__ __device__ void arr_copy(Arg_t *arg)
+	__forceinline__ __device__ void arr_copy(Arg_t *arg, CallStack *stk)
 	{
 		int res_length = 0;
 		int actual_lvl = arg->level + 1;
@@ -550,7 +550,7 @@ namespace STMatch
 				assert(false)
 			else if (pat->num_BN[actual_lvl] == 1)
 			{
-				arr_copy(stk);
+				arr_copy(&arg[wid], stk);
 			}
 			else
 			{
