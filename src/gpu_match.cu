@@ -6,7 +6,7 @@
 #define LANEID (threadIdx.x % WARP_SIZE)
 #define PEAK_CLK (float)1410000 // A100
 #define ELAPSED_TIME(start) (clock() - start)/PEAK_CLK // in ms
-#define TIMEOUT 1 // timeout
+#define TIMEOUT 10 // timeout
 
 namespace STMatch
 {
@@ -312,17 +312,17 @@ namespace STMatch
 							pred = false;
 						}
 						// STMatch does no check 
-						// if (pred)
-						// {
-						// 	for (int k = -1; k < arg->level; ++k)
-						// 	{
-						// 		int cond_vertex_M = path(stk, arg->pat, k);
-						// 		if (cond_vertex_M == target) {
-						// 			pred = false;
-						// 			break;
-						// 		}
-						// 	}
-						// }
+						if (pred)
+						{
+							for (int k = -1; k < arg->level; ++k)
+							{
+								int cond_vertex_M = path(stk, arg->pat, k);
+								if (cond_vertex_M == target) {
+									pred = false;
+									break;
+								}
+							}
+						}
 					}
 				}
 				if (pred) pred = bsearch_exist(arg->set1, arg->set1_size, target);
