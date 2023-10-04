@@ -337,12 +337,82 @@ namespace STMatch
 		*arg->res_size = res_length;
 	}
 
-	__forceinline__ __device__ void arr_copy(int* dst, int* src, int len)
+	__forceinline__ __device__ void arr_copy(Arg_t *arg)
 	{
-		for (int i = LANEID; i < len; i += WARP_SIZE)
+		int res_length = 0;
+		int actual_lvl = arg->level + 1;
+		bool pred;
+		int target;
+		int cur_label = arg->pat->vertex_labels[actual_lvl];
+		int BN = arg->pat->backward_neighbors[actual_lvl][0];
+
+		graph_node_t t = path(stk, pat, BN - 1);
+		int num_neighbor = (graph_node_t)(arg->g->rowptr[t + 1] - arg->g->rowptr[t]);
+		int *neighbors = arg->g->colidx[g->rowptr[t]];
+
+		for (int i = LANEID; i < num_neighbor; i += WARP_SIZE)
 		{
-			dst[i] = src[i];
+			// if unlabeled, check automorphism
+			pred = false;
+			int il = i + LANEID;
+			if (il < num_neighbor)
+			{
+				pred = true;
+				target = neighbors[il];
+				if (!LABELED) {
+					for (int k = 0; k < arg->pat->condition_cnt[actual_lvl]; ++k)
+					{
+						int cond = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k];
+						int cond_lvl = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k + 1];
+						int cond_vertex_M = path(stk, arg->pat, cond_lvl - 1);
+						if (cond == CondOperator::LESS_THAN) {
+							if (cond_vertex_M <= target) {
+								pred = false;
+								break;
+							}
+						}
+						else if (cond == CondOperator::LARGER_THAN) {
+							if (cond_vertex_M >= target) {
+								pred = false;
+								break;
+							}
+						}
+						else if (cond == CondOperator::NON_EQUAL) {
+							if (cond_vertex_M == target) {
+								pred = false;
+								break;
+							}
+						}
+					}
+				} 
+				else 
+				{
+					if (arg->g->vertex_label[target] != cur_label)
+					{
+						pred = false;
+					}
+					// STMatch does no check 
+					if (pred)
+					{
+						for (int k = -1; k < arg->level; ++k)
+						{
+							int cond_vertex_M = path(stk, arg->pat, k);
+							if (cond_vertex_M == target) {
+								pred = false;
+								break;
+							}
+						}
+					}
+				}
+				int loc = scanIndex(pred) + res_length;
+				if (arg->level < arg->pat->nnodes - 2 && pred)
+					arg->res[loc] = target;
+				if (threadIdx.x % WARP_SIZE == 31) // last lane's loc+pred is number of items found in this scan
+					res_length = loc + pred;
+				res_length = __shfl_sync(0xFFFFFFFF, res_length, 31);
+			}
 		}
+		stk->slot_size[level] = res_length;
 	}
 
 	__forceinline__ __device__ void get_job(Graph *g, Pattern *pat, CallStack *stk, JobQueue *q)
@@ -477,8 +547,12 @@ namespace STMatch
 
 			int actual_lvl = level + 1;
 
-			if (pat->num_BN[actual_lvl] == 0 || pat->num_BN[actual_lvl] == 1)
-				assert(false);
+			if (pat->num_BN[actual_lvl] == 0)
+				assert(false)
+			else if (pat->num_BN[actual_lvl] == 1)
+			{
+				arr_copy(stk, pat);
+			}
 			else
 			{
 				int BN = pat->backward_neighbors[actual_lvl][0];
