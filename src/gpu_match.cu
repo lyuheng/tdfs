@@ -411,7 +411,7 @@ namespace STMatch
 				res_length = __shfl_sync(0xFFFFFFFF, res_length, 31);
 			}
 		}
-		stk->slot_size[level] = res_length;
+		stk->slot_size[arg->level] = res_length;
 	}
 
 	__forceinline__ __device__ void get_job(Graph *g, Pattern *pat, CallStack *stk, JobQueue *q)
@@ -547,7 +547,7 @@ namespace STMatch
 			int actual_lvl = level + 1;
 
 			if (pat->num_BN[actual_lvl] == 0)
-				assert(false)
+				assert(false);
 			else if (pat->num_BN[actual_lvl] == 1)
 			{
 				arr_copy(&arg[wid], stk);
