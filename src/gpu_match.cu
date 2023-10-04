@@ -264,7 +264,6 @@ namespace STMatch
 		bool pred;
 		int target;
 		int cur_label = arg->pat->vertex_labels[actual_lvl];
-		int cur_degree = arg->pat->degree[actual_lvl];
 
 		for (int i = 0; i < arg->set2_size; i += WARP_SIZE)
 		{
@@ -313,17 +312,17 @@ namespace STMatch
 							pred = false;
 						}
 						// STMatch does no check 
-						if (pred)
-						{
-							for (int k = -1; k < arg->level; ++k)
-							{
-								int cond_vertex_M = path(stk, arg->pat, k);
-								if (cond_vertex_M == target) {
-									pred = false;
-									break;
-								}
-							}
-						}
+						// if (pred)
+						// {
+						// 	for (int k = -1; k < arg->level; ++k)
+						// 	{
+						// 		int cond_vertex_M = path(stk, arg->pat, k);
+						// 		if (cond_vertex_M == target) {
+						// 			pred = false;
+						// 			break;
+						// 		}
+						// 	}
+						// }
 					}
 				}
 				if (pred) pred = bsearch_exist(arg->set1, arg->set1_size, target);
