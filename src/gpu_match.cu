@@ -346,7 +346,7 @@ namespace STMatch
 		int cur_label = arg->pat->vertex_labels[actual_lvl];
 		int BN = arg->pat->backward_neighbors[actual_lvl][0];
 
-		graph_node_t t = path(stk, pat, BN - 1);
+		graph_node_t t = path(stk, arg->pat, BN - 1);
 		int num_neighbor = (graph_node_t)(arg->g->rowptr[t + 1] - arg->g->rowptr[t]);
 		int *neighbors = arg->g->colidx[g->rowptr[t]];
 
