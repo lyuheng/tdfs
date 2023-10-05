@@ -353,6 +353,7 @@ namespace STMatch
 		for (int i = 0; i < num_neighbor; i += WARP_SIZE)
 		{
 			// if unlabeled, check automorphism
+			pred = false;
 			int il = i + LANEID;
 			if (il < num_neighbor)
 			{
