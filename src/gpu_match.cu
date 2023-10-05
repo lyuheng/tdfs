@@ -408,7 +408,7 @@ namespace STMatch
 			int loc = scanIndex(pred) + res_length;
 			// if (arg->level < arg->pat->nnodes - 2 && pred
 			if (pred)
-				arg->res[loc] = target;
+				stk->slot_size[arg->level][loc] = target;
 			if (threadIdx.x % WARP_SIZE == 31) // last lane's loc+pred is number of items found in this scan
 				res_length = loc + pred;
 			res_length = __shfl_sync(0xFFFFFFFF, res_length, 31);
