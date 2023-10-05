@@ -348,7 +348,7 @@ namespace STMatch
 
 		graph_node_t t = path(stk, arg->pat, BN - 1);
 		int num_neighbor = (graph_node_t)(arg->g->rowptr[t + 1] - arg->g->rowptr[t]);
-		int *neighbors = arg->g->colidx[g->rowptr[t]];
+		int *neighbors = arg->g->colidx[arg->g->rowptr[t]];
 
 		for (int i = LANEID; i < num_neighbor; i += WARP_SIZE)
 		{
