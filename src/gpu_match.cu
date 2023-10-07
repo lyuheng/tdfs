@@ -435,7 +435,7 @@ namespace STMatch
 		}
         else
         {
-	        atomicSub(&q->cur, JOB_CHUNK_SIZE);
+	        atomicAdd(&q->cur, -JOB_CHUNK_SIZE);
             njobs = 0;
         }
 
