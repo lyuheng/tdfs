@@ -415,8 +415,8 @@ namespace STMatch
 		stk->slot_size[arg->level] = res_length;
 	}
 
-	__forceinline__ __device__ void get_job(Graph *g, Pattern *pat, CallStack *stk, JobQueue *q)
-	// __forceinline__ __device__ void get_job(JobQueue *q, graph_node_t &cur_pos, graph_node_t &njobs)
+	// __forceinline__ __device__ void get_job(Graph *g, Pattern *pat, CallStack *stk, JobQueue *q)
+	__forceinline__ __device__ void get_job(JobQueue *q, graph_node_t &cur_pos, graph_node_t &njobs)
 	{
 		// lock(&(q->mutex));
 		// cur_pos = q->cur;
@@ -426,20 +426,20 @@ namespace STMatch
 		// njobs = q->cur - cur_pos;
 		// unlock(&(q->mutex));
 
-		// cur_pos = atomicAdd(&q->cur, JOB_CHUNK_SIZE);
-		// if (cur_pos < q->length) {
-		// 	int tmp = cur_pos + JOB_CHUNK_SIZE;
-		// 	if (tmp > q->length) 
-		// 		tmp = q->length;
-		// 	njobs = tmp - cur_pos;
-		// }
-        // else
-        // {
-	    //     atomicSub(&q->cur, JOB_CHUNK_SIZE);
-        //     njobs = 0;
-        // }
+		cur_pos = atomicAdd(&q->cur, JOB_CHUNK_SIZE);
+		if (cur_pos < q->length) {
+			int tmp = cur_pos + JOB_CHUNK_SIZE;
+			if (tmp > q->length) 
+				tmp = q->length;
+			njobs = tmp - cur_pos;
+		}
+        else
+        {
+	        atomicSub(&q->cur, JOB_CHUNK_SIZE);
+            njobs = 0;
+        }
 
-		
+		/*
 		int cnt;
 		while (true)
 		{
@@ -488,6 +488,7 @@ namespace STMatch
 				break;
 			}
 		}
+		*/
 	}
 
 	__device__ void extend(Graph *g, Pattern *pat, CallStack *stk, JobQueue *q, pattern_node_t level, long &start_clk, 
@@ -522,18 +523,18 @@ namespace STMatch
 				}
 				else
 				{
-					get_job(g, pat, stk, q);
+					// get_job(g, pat, stk, q);
 
-					// get_job(q, cur_job, njobs);
+					get_job(q, cur_job, njobs);
 
-					// for (size_t i = 0; i < njobs; i++)
-                    // {
-                    //     for (int j = 0; j < 2; j++)
-                    //     {
-                    //         stk->slot_storage[0][i + JOB_CHUNK_SIZE * j] = (q->q[cur_job + i].nodes)[j]; // matches of 2 nodes are saved at level 0
-                    //     }
-                    // }
-                    // stk->slot_size[0] = njobs;
+					for (size_t i = 0; i < njobs; i++)
+                    {
+                        for (int j = 0; j < 2; j++)
+                        {
+                            stk->slot_storage[0][i + JOB_CHUNK_SIZE * j] = (q->q[cur_job + i].nodes)[j]; // matches of 2 nodes are saved at level 0
+                        }
+                    }
+                    stk->slot_size[0] = njobs;
 				}
 			}
 			__syncwarp();
