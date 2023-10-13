@@ -6,7 +6,7 @@
 #define LANEID (threadIdx.x % WARP_SIZE)
 #define PEAK_CLK (float)1410000 // A100
 #define ELAPSED_TIME(start) (clock() - start)/PEAK_CLK // in ms
-#define TIMEOUT 100000000 // timeout
+#define TIMEOUT 10 // timeout
 
 namespace STMatch
 {
@@ -506,21 +506,21 @@ namespace STMatch
 			
 			if (threadIdx.x % WARP_SIZE == 0)
 			{
-				// int x, y, z;
-				// bool ret = _stealing_args->queue->dequeue(x, y, z);
-				// if (ret) {
-				// 	stk->slot_storage[0][0] = x;
-				// 	stk->slot_storage[0][JOB_CHUNK_SIZE] = y;
-				// 	stk->slot_size[0] = 1;
+				int x, y, z;
+				bool ret = _stealing_args->queue->dequeue(x, y, z);
+				if (ret) {
+					stk->slot_storage[0][0] = x;
+					stk->slot_storage[0][JOB_CHUNK_SIZE] = y;
+					stk->slot_size[0] = 1;
 
-				// 	if (z != DeletionMarker<int>::val - 1)
-				// 	{
-				// 		level = 1;
-				// 		stk->slot_storage[1][0] = z;
-				// 		stk->slot_size[1] = 1;
-				// 	}
-				// }
-				// else
+					if (z != DeletionMarker<int>::val - 1)
+					{
+						level = 1;
+						stk->slot_storage[1][0] = z;
+						stk->slot_size[1] = 1;
+					}
+				}
+				else
 				{
 					get_job(g, pat, stk, q);
 
