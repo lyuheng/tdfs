@@ -646,7 +646,7 @@ namespace STMatch
 		stk->iter[level] = 0;
 	}
 
-	/*
+	
 	__forceinline__ __device__ void respond_across_block(int level, CallStack *stk, Pattern *pat, StealingArgs *_stealing_args)
 	{
 		if (level > 0 && level <= DETECT_LEVEL)
@@ -657,7 +657,7 @@ namespace STMatch
 				int left_task = 0;
 				for (int l = 0; l < level; l++)
 				{
-					left_task = stk->slot_size[pat->rowptr[l]][stk->uiter[l]] - stk->iter[l] - stk->uiter[l + 1] - 1;
+					left_task = stk->slot_size[l] - stk->iter[l] - 1;
 					if (left_task > 0)
 					{
 						at_level = l;
@@ -693,7 +693,7 @@ namespace STMatch
 			__syncwarp();
 		}
 	}
-	*/
+	
 
 	__device__ void match(Graph *g, Pattern *pat,
 						  CallStack *stk, JobQueue *q, size_t *count, StealingArgs *_stealing_args, long &start_clk)
