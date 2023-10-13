@@ -183,9 +183,9 @@ namespace STMatch {
      std::cout << "there're " << deg_le_4 << " vertices degree <= 4, percentage: " << (float)deg_le_4/g.nnodes * 100 << "%" << std::endl;
 
 
-      for (int i=0; i<n_vertices; ++i)
+      for (int i=0; i < n_vertices; ++i)
       {
-        for (int j=g.rowptr[i]; j<g.rowptr[i + 1] - 1; ++j)
+        for (long j = g.rowptr[i]; j < g.rowptr[i + 1] - 1; ++j)
         {
           if (g.colidx[j] == g.colidx[j + 1]) assert(false);
         }
