@@ -14,8 +14,12 @@ int main(int argc, char* argv[]) {
 
   STMatch::GraphPreprocessor g(argv[1]);
   STMatch::PatternPreprocessor p(argv[2]);
+  
+  std::cout << "Before build_src_vtx" << std::endl;
 
   g.build_src_vtx(p);
+
+  std::cout << "after build_src_vtx" << std::endl;
 
 
   std::cout << "conditions: " << std::endl;
