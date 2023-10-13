@@ -711,7 +711,7 @@ namespace STMatch
 
 			if (level < pat->nnodes - 2)
 			{
-				if (STEAL_ACROSS_BLOCK)
+				if (true)
 				{
 					respond_across_block(level, stk, pat, _stealing_args);
 				}
@@ -877,7 +877,7 @@ namespace STMatch
 			stealed[local_wid] = false;
 
 			
-			if (STEAL_IN_BLOCK)
+			if (true)
 			{
 				if (threadIdx.x % WARP_SIZE == 0)
 				{
@@ -887,7 +887,7 @@ namespace STMatch
 			}
 
 			
-			if (STEAL_ACROSS_BLOCK)
+			if (true)
 			{
 				if (!stealed[local_wid])
 				{
