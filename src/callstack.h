@@ -86,7 +86,7 @@ struct StackBuffers
     __forceinline__ __device__ __host__ PageBufferT& operator()(int slot_id) { 
       return buffers[slot_id];
     }
-    ___forceinline__ _device__ void allocate() {
+    ___forceinline__ __device__ void allocate() {
         int allocation_size_byte = LARGEST_PAGE_SIZE;
         allocation_size_byte = Ouro::alignment(allocation_size_byte, sizeof(int));
         for (int i = 0; i < PAT_SIZE; ++i) {
