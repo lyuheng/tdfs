@@ -13,6 +13,7 @@
 using MemoryManagerType = OuroPQ;
 
 #define LARGEST_PAGE_SIZE (1<<13)  //2^13 B = 8KB
+#define LANEID (threadIdx.x % WARP_SIZE)
 
 namespace STMatch {
 
