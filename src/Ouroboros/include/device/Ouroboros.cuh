@@ -5,7 +5,7 @@
 #include "Statistics.h"
 #include "Helper.cuh"
 
-#define __CUDA_ARCH__ //#########!!!!!!!!!!!
+//#define __CUDA_ARCH__ //#########!!!!!!!!!!!
 
 struct Memory
 {
@@ -229,7 +229,7 @@ struct OuroborosPages : OuroborosBase
 		chunk_index = atomicAdd(next_free_chunk, (QUEUECHUNK ? 1 : ChunkAddFactor_));
 		// chunk_index = atomicAdd(next_free_chunk, ChunkAddFactor_);
 
-		// 讲chunk_index这个bit设置成1
+		// 讲chunk_index这个bit设置�?1
 		chunk_locator->initChunkIndex(chunk_index);
 		return (chunk_index + (QUEUECHUNK ? 1 : ChunkAddFactor_)) < maxChunks;
 
@@ -255,7 +255,7 @@ struct OuroborosPages : OuroborosBase
 template<class... OUROBOROSES>
 struct Ouroboros;
 
-// 不定长参数模版
+// 不定长参数模�?
 template<class OUROBOROS, class... OUROBOROSES>
 struct Ouroboros<OUROBOROS, OUROBOROSES...>
 {
