@@ -670,7 +670,7 @@ __forceinline__ __device__ bool bsearch_exist(PageBuffer_T set2, SIZE_T set2_siz
 					arg[wid].set1.index_map = (graph_node_t **)neighbor;
 					arg[wid].set1_size = neighbor_cnt;
 					arg[wid].set2.page_num = NULL;
-					arg[wid].set2 = (graph_node_t **)&g->colidx[g->rowptr[t_min]];
+					arg[wid].set2.index_map = (graph_node_t **)&g->colidx[g->rowptr[t_min]];
 					arg[wid].set2_size = min_neighbor;
 					arg[wid].res = stk->slot_storage(level);
 					arg[wid].res_size = &(stk->slot_size[level]);
