@@ -8,7 +8,7 @@ define compile_cu_test
 endef
 
 define compile_gpu_match
-	nvcc -std=c++17 $(DEBUG) $(OPTIONS) -dc -I. -I./src/Ourobors/include $(1) -o $(2)
+	nvcc -std=c++17 $(DEBUG) $(OPTIONS) -dc -I. -I./src/Ouroboros/include $(1) -o $(2)
 endef
 
 define edit_config
