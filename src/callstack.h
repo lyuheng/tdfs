@@ -10,6 +10,8 @@
 #include "Ouroboros/include/InstanceDefinitions.cuh"
 #include "Ouroboros/include/Utility.h"
 
+using MemoryManagerType = OuroPQ;
+
 #define LARGEST_PAGE_SIZE (1<<13)  //2^13 B = 8KB
 
 namespace STMatch {
