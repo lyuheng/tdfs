@@ -4,7 +4,7 @@ OPTIONS = -arch=sm_80 -gencode=arch=compute_80,code=sm_80 -Xptxas -v -maxrregcou
 GPU_MATCH = src/gpu_match.cu 
 
 define compile_cu_test
-	nvcc -std=c++17 $(DEBUG) $(OPTIONS) $(1) cu_test.cu -o $(2)
+	nvcc -std=c++17 $(DEBUG) $(OPTIONS) $(1) cu_test.cu -I./src/Ouroboros/include -o $(2)
 endef
 
 define compile_gpu_match
