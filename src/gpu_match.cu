@@ -312,7 +312,7 @@ __forceinline__ __device__ bool bsearch_exist(PageBuffer_T set2, SIZE_T set2_siz
 			if (il < arg->set2_size)
 			{
 				pred = true;
-				target = arg->set2[il];
+				target = arg->set2(il, mm);
 
 				if (check_validity)
 				{
@@ -647,7 +647,7 @@ __forceinline__ __device__ bool bsearch_exist(PageBuffer_T set2, SIZE_T set2_siz
 						arg[wid].set1.page_num = NULL;
 						arg[wid].set1.index_map = (graph_node_t **)neighbor;
 						arg[wid].set1_size = neighbor_cnt;
-						arg[wid].set2 = stk->slot_storage[level];
+						arg[wid].set2 = stk->slot_storage(level);
 						arg[wid].set2_size = stk->slot_size[level];
 						arg[wid].res = stk->slot_storage(level);
 						arg[wid].res_size = &(stk->slot_size[level]);
