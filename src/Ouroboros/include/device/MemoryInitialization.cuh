@@ -4,17 +4,17 @@
 
 // ##############################################################################################################################################
 //
-__global__ void printCompute()
-{
-	int tid = threadIdx.x + blockIdx.x * blockDim.x;
-	if(tid >= 1)
-		return;
-	#if (__CUDA_ARCH__ >= 700)
-			printf("ASYNC - COMPUTE MODE");
-		#else
-			printf("SYNC - COMPUTE MODE");
-		#endif
-}
+// __global__ void printCompute()
+// {
+// 	int tid = threadIdx.x + blockIdx.x * blockDim.x;
+// 	if(tid >= 1)
+// 		return;
+// 	#if (__CUDA_ARCH__ >= 700)
+// 			printf("ASYNC - COMPUTE MODE");
+// 		#else
+// 			printf("SYNC - COMPUTE MODE");
+// 		#endif
+// }
 
 // ##############################################################################################################################################
 //
@@ -140,7 +140,7 @@ void Ouroboros<OUROBOROS, OUROBOROSES...>::initialize(size_t instantiation_size,
 	if(printDebug)
 	{
 		printf("%s##\n####\n##\n---", break_line_green_s);
-		printCompute<<<1, 32>>>();
+		// printCompute<<<1, 32>>>();
 		cudaDeviceSynchronize();
 		#ifdef TEST_VIRTUALIZED
 		printf(" - VIRTUALIZED ARRAY-BASED");
@@ -158,9 +158,9 @@ void Ouroboros<OUROBOROS, OUROBOROSES...>::initialize(size_t instantiation_size,
 	// Align both the required size and total size to the chunk base size
 	auto total_required_size = Ouro::alignment<size_t>(size_() + total_memory_manager_size + additionalSizeBeginning + additionalSizeEnd, ChunkBase::size());
 	auto difference = Ouro::alignment<size_t>(instantiation_size, ChunkBase::size()) - total_required_size;
-	// 下面这两行是向下取整的操作 ======================================
+	// 下面这两行是向下取整的操�? ======================================
 	memory.maxChunks = difference / ChunkBase::size();
-	// 一共maxChunks个chunk，每个chunk的大小是固定的
+	// 一共maxChunks个chunk，每个chunk的大小是固定�?
 	memory.adjacencysize = Ouro::alignment<uint64_t>(memory.maxChunks * ChunkBase::size());
 	// ============================================================
 	// 以int为单位记录memory.maxChunks这么多个bit需要多少个byte
