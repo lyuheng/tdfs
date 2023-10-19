@@ -3,10 +3,15 @@
 
 #define UNROLL_SIZE(l) (l > 0 ? UNROLL : 1)
 
+// gpu terminology
 #define LANEID (threadIdx.x % WARP_SIZE)
+#define WARPID (threadIdx.x >> 5) 
+#define GLWARPID (blockIdx.x * NWARPS_PER_BLOCK + WARPID)
+
+// hyperparameters
 #define PEAK_CLK (float)1410000 // A100
 #define ELAPSED_TIME(start) (clock() - start)/PEAK_CLK // in ms
-#define TIMEOUT 100000000 // timeout
+#define TIMEOUT 10 // timeout
 
 namespace STMatch
 {
@@ -127,26 +132,29 @@ namespace STMatch
 	__forceinline__ __device__ graph_node_t path(CallStack *stk, Pattern *pat, int level)
 	{
 		if (level > 0)
-			return stk->slot_storage[level][stk->iter[level]];
+			return stk->slot_storage(level, stk->iter[level]);
 		else
 		{
-			return stk->slot_storage[0][stk->iter[0] + (level + 1) * JOB_CHUNK_SIZE]; // level=-1 or 0
+			return stk->slot_storage(0, stk->iter[0] + (level + 1) * JOB_CHUNK_SIZE); // level=-1 or 0
 		}
 	}
 
 	__forceinline__ __device__ graph_node_t *path_address(CallStack *stk, Pattern *pat, int level)
 	{
 		if (level > 0)
-			return &(stk->slot_storage[level][stk->iter[level]]);
+			return &(stk->slot_storage(level, stk->iter[level]));
 		else
 		{
-			return &(stk->slot_storage[0][stk->iter[0] + (level + 1) * JOB_CHUNK_SIZE]); // -1 or 0
+			return &(stk->slot_storage(0, stk->iter[0] + (level + 1) * JOB_CHUNK_SIZE)); // level=-1 or 0
 		}
 	}
 
 	typedef struct
 	{
-		graph_node_t *set1, *set2, *res;
+		// graph_node_t *set1, *set2, *res;
+		// replace to dynamic memory version
+		PageBuffer<graph_node_t, MemoryManagerType> set1, set2, res;
+
 		graph_node_t set1_size, set2_size, *res_size;
 		graph_node_t ub;
 		bitarray32 label;
@@ -156,6 +164,37 @@ namespace STMatch
 		int level;
 		Pattern *pat;
 	} Arg_t;
+
+
+template <typename PageBuffer_T, typename DATA_T, typename SIZE_T, typename MemoryManagerType>
+__forceinline__ __device__ bool bsearch_exist(PageBuffer_T set2, SIZE_T set2_size, DATA_T target, MemoryManagerType *mm)
+{
+    if (set2_size <= 0)
+        return false;
+    int mid;
+    int low = 0;
+    int high = set2_size - 1;
+    while (low <= high)
+    {
+        mid = (low + high) / 2;
+
+        // assert(mid != 94);
+
+        if (target == set2(mid, mm))
+        {
+            return true;
+        }
+        else if (target > set2(mid, mm))
+        {
+            low = mid + 1;
+        }
+        else
+        {
+            high = mid - 1;
+        }
+    }
+    return false;
+}
 
 	template <typename DATA_T, typename SIZE_T>
 	__forceinline__ __device__ bool bsearch_exist(DATA_T *set2, SIZE_T set2_size, DATA_T target)
@@ -257,7 +296,8 @@ namespace STMatch
 		return index;
 	}
 
-	__forceinline__ __device__ void compute_intersection(Arg_t *arg, CallStack *stk, bool last_round, bool check_validity)
+	template <typename MemoryManagerType>
+	__forceinline__ __device__ void compute_intersection(MemoryManagerType *mm, Arg_t *arg, CallStack *stk, bool last_round, bool check_validity)
 	{
 		int res_length = 0;
 		int actual_lvl = arg->level + 1;
@@ -325,11 +365,11 @@ namespace STMatch
 						}
 					}
 				}
-				if (pred) pred = bsearch_exist(arg->set1, arg->set1_size, target);
+				if (pred) pred = bsearch_exist(arg->set1, arg->set1_size, target, mm);
 			}
 			int loc = scanIndex(pred) + res_length;
 			if ((arg->level < arg->pat->nnodes - 2 && pred) || ((arg->level == arg->pat->nnodes - 2) && !last_round && pred))
-				arg->res[loc] = target;
+				arg->res(loc, mm) = target;
 			if (threadIdx.x % WARP_SIZE == 31) // last lane's loc+pred is number of items found in this scan
 				res_length = loc + pred;
 			res_length = __shfl_sync(0xFFFFFFFF, res_length, 31);
@@ -407,7 +447,7 @@ namespace STMatch
 			}
 			int loc = scanIndex(pred) + res_length;
 			if (arg->level < arg->pat->nnodes - 2 && pred)
-				stk->slot_storage[arg->level][loc] = target;
+				stk->slot_storage(arg->level, loc) = target;
 			if (threadIdx.x % WARP_SIZE == 31) // last lane's loc+pred is number of items found in this scan
 				res_length = loc + pred;
 			res_length = __shfl_sync(0xFFFFFFFF, res_length, 31);
@@ -470,8 +510,8 @@ namespace STMatch
 								}
 								if (valid)
 								{
-									stk->slot_storage[0][cnt] = r;
-									stk->slot_storage[0][JOB_CHUNK_SIZE + cnt] = c;
+									stk->slot_storage(0, cnt) = r;
+									stk->slot_storage(0, JOB_CHUNK_SIZE + cnt) = c;
 									cnt++;
 								}
 							}
@@ -490,7 +530,8 @@ namespace STMatch
 		}
 	}
 
-	__device__ void extend(Graph *g, Pattern *pat, CallStack *stk, JobQueue *q, pattern_node_t level, long &start_clk, 
+	template <typename MemoryManagerType>
+	__device__ void extend(MemoryManagerType *mm, Graph *g, Pattern *pat, CallStack *stk, JobQueue *q, pattern_node_t level, long &start_clk, 
 							StealingArgs *_stealing_args)
 	{
 
@@ -509,14 +550,14 @@ namespace STMatch
 				int x, y, z;
 				bool ret = _stealing_args->queue->dequeue(x, y, z);
 				if (ret) {
-					stk->slot_storage[0][0] = x;
-					stk->slot_storage[0][JOB_CHUNK_SIZE] = y;
+					stk->slot_storage(0, 0) = x;
+					stk->slot_storage(0, JOB_CHUNK_SIZE) = y;
 					stk->slot_size[0] = 1;
 
 					if (z != DeletionMarker<int>::val - 1)
 					{
 						level = 1;
-						stk->slot_storage[1][0] = z;
+						stk->slot_storage(1, 0) = z;
 						stk->slot_size[1] = 1;
 					}
 				}
@@ -583,14 +624,17 @@ namespace STMatch
 					t = path(stk, pat, BN - 1);
 					int* neighbor = &g->colidx[g->rowptr[t]];
 					int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
-					arg[wid].set1 = neighbor;
+
+					arg[wid].set1.page_num = NULL;
+					arg[wid].set1.index_map = (graph_node_t **)neighbor;
 					arg[wid].set1_size = neighbor_cnt;
-					arg[wid].set2 = &g->colidx[g->rowptr[t_min]];
+					arg[wid].set2.page_num = NULL;
+					arg[wid].set2.index_map= (graph_node_t **)&g->colidx[g->rowptr[t_min]];
 					arg[wid].set2_size = min_neighbor;
-					arg[wid].res = stk->slot_storage[level];
+					arg[wid].res = stk->slot_storage(level);
 					arg[wid].res_size = &(stk->slot_size[level]);
 					last_round = (pat->num_BN[actual_lvl] == 2) ? true : false;
-					compute_intersection(&arg[wid], stk, last_round, true);
+					compute_intersection(mm, &arg[wid], stk, last_round, true);
 
 					for (int i = 1; i < pat->num_BN[actual_lvl]; ++i)
 					{
@@ -600,13 +644,14 @@ namespace STMatch
 						t = path(stk, pat, BN - 1);
 						int* neighbor = &g->colidx[g->rowptr[t]];
 						int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
-						arg[wid].set1 = neighbor;
+						arg[wid].set1.page_num = NULL;
+						arg[wid].set1.index_map = (graph_node_t **)neighbor;
 						arg[wid].set1_size = neighbor_cnt;
 						arg[wid].set2 = stk->slot_storage[level];
 						arg[wid].set2_size = stk->slot_size[level];
-						arg[wid].res = stk->slot_storage[level];
+						arg[wid].res = stk->slot_storage(level);
 						arg[wid].res_size = &(stk->slot_size[level]);
-						compute_intersection(&arg[wid], stk, last_round, false);
+						compute_intersection(mm, &arg[wid], stk, last_round, false);
 					}
 				}
 				else // i_min = 0 
@@ -615,14 +660,16 @@ namespace STMatch
 					t = path(stk, pat, BN - 1);
 					int* neighbor = &g->colidx[g->rowptr[t]];
 					int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
-					arg[wid].set1 = neighbor;
+					arg[wid].set1.page_num = NULL;
+					arg[wid].set1.index_map = (graph_node_t **)neighbor;
 					arg[wid].set1_size = neighbor_cnt;
-					arg[wid].set2 = &g->colidx[g->rowptr[t_min]];
+					arg[wid].set2.page_num = NULL;
+					arg[wid].set2 = (graph_node_t **)&g->colidx[g->rowptr[t_min]];
 					arg[wid].set2_size = min_neighbor;
-					arg[wid].res = stk->slot_storage[level];
+					arg[wid].res = stk->slot_storage(level);
 					arg[wid].res_size = &(stk->slot_size[level]);
 					last_round = (pat->num_BN[actual_lvl] == 2) ? true : false;
-					compute_intersection(&arg[wid], stk, last_round, true);
+					compute_intersection(mm, &arg[wid], stk, last_round, true);
 
 					for (int i = 2; i < pat->num_BN[actual_lvl]; ++i)
 					{
@@ -632,13 +679,14 @@ namespace STMatch
 						t = path(stk, pat, BN - 1);
 						int* neighbor = &g->colidx[g->rowptr[t]];
 						int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
-						arg[wid].set1 = neighbor;
+						arg[wid].set1.page_num = NULL;
+						arg[wid].set1.index_map =(graph_node_t **)neighbor;
 						arg[wid].set1_size = neighbor_cnt;
-						arg[wid].set2 = stk->slot_storage[level];
+						arg[wid].set2 = stk->slot_storage(level);
 						arg[wid].set2_size = stk->slot_size[level];
-						arg[wid].res = stk->slot_storage[level];
+						arg[wid].res = stk->slot_storage(level);
 						arg[wid].res_size = &(stk->slot_size[level]);
-						compute_intersection(&arg[wid], stk, last_round, false);
+						compute_intersection(mm, &arg[wid], stk, last_round, false);
 					}
 				}
 			}
@@ -694,8 +742,8 @@ namespace STMatch
 		}
 	}
 	
-
-	__device__ void match(Graph *g, Pattern *pat,
+	template <typename MemoryManagerType>
+	__device__ void match(MemoryManagerType *mm, Graph *g, Pattern *pat,
 						  CallStack *stk, JobQueue *q, size_t *count, StealingArgs *_stealing_args, long &start_clk)
 	{
 
@@ -718,7 +766,7 @@ namespace STMatch
 
 				if (stk->slot_size[level] == 0)
 				{
-					extend(g, pat, stk, q, level, start_clk, _stealing_args);
+					extend(mm, g, pat, stk, q, level, start_clk, _stealing_args);
 					if (level == 0 && stk->slot_size[0] == 0)
 					{
 						// if (threadIdx.x % WARP_SIZE == 0)
@@ -794,7 +842,7 @@ namespace STMatch
 			}
 			else if (level == pat->nnodes - 2)
 			{
-				extend(g, pat, stk, q, level, start_clk, _stealing_args);
+				extend(mm, g, pat, stk, q, level, start_clk, _stealing_args);
 
 				if (LANEID == 0)
 				{
@@ -816,7 +864,8 @@ namespace STMatch
 		}
 	}
 
-	__global__ void _parallel_match(Graph *dev_graph, Pattern *dev_pattern,
+	template <typename MemoryManagerType>
+	__global__ void _parallel_match(MemoryManagerType *mm, Graph *dev_graph, Pattern *dev_pattern,
 									CallStack *dev_callstack, JobQueue *job_queue, size_t *res,
 									int *idle_warps, int *idle_warps_count, int *global_mutex,
 									Queue *queue)
@@ -839,6 +888,8 @@ namespace STMatch
 
 		stealing_args.queue = queue;
 
+		__shared__ int capacity[NWARPS_PER_BLOCK * PAT_SIZE];
+
 		int global_tid = blockIdx.x * blockDim.x + threadIdx.x;
 		int global_wid = global_tid / WARP_SIZE;
 		int local_wid = threadIdx.x / WARP_SIZE;
@@ -849,6 +900,16 @@ namespace STMatch
 			pat = *dev_pattern;
 		}
 		__syncthreads();
+
+		if (LANEID == 0)
+		{
+			for (int i = 0; i < PAT_SIZE; ++i) {
+				dev_callstack[global_wid].slot_storage.buffers[i].page_num = &capacity[i + local_wid * PAT_SIZE];
+				*(dev_callstack[global_wid].slot_storage.buffers[i].page_num) = 1;
+			}
+			__threadfence();
+		}
+		__syncwarp();
 
 		if (threadIdx.x % WARP_SIZE == 0)
 		{
@@ -871,7 +932,7 @@ namespace STMatch
 		while (true)
 		{
 			long start_clk = clock64();
-			match(&graph, &pat, &stk[local_wid], job_queue, &count[local_wid], &stealing_args, start_clk);
+			match(mm, &graph, &pat, &stk[local_wid], job_queue, &count[local_wid], &stealing_args, start_clk);
 			__syncwarp();
 
 			stealed[local_wid] = false;
@@ -946,4 +1007,16 @@ namespace STMatch
 		// if(threadIdx.x % WARP_SIZE == 0)
 		//   printf("%d\t%d\t%d\n", blockIdx.x, local_wid, mutex_this_block[local_wid]);
 	}
+
+
+template <typename MemoryManagerType>
+__global__ void allocate_memory(MemoryManagerType *mm, CallStack *dev_callstack)
+{
+    if(LANEID == 0)
+    {
+        dev_callstack[GLWARPID].slot_storage.allocate();
+    }
+    __syncwarp();
+}
+
 }
