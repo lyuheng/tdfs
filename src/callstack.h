@@ -3,6 +3,7 @@
 #include <stdlib.h> 
 #include <string.h>
 #include <stdio.h>
+#include <cuda.h>
 #include "config.h"
 #include "Ouroboros/include/device/Ouroboros_impl.cuh"
 #include "Ouroboros/include/device/MemoryInitialization.cuh"

@@ -37,97 +37,97 @@ namespace STMatch
 	}
 	
 	// target_stk is the warp being stolen
-	__device__ bool trans_layer(CallStack &_target_stk, CallStack &_cur_stk, Pattern *_pat, int _k, int ratio = 2)
-	{
-		if (_target_stk.level <= _k)
-			return false;
+	// __device__ bool trans_layer(CallStack &_target_stk, CallStack &_cur_stk, Pattern *_pat, int _k, int ratio = 2)
+	// {
+	// 	if (_target_stk.level <= _k)
+	// 		return false;
 
-		int num_left_task = _target_stk.slot_size[_k] - (_target_stk.iter[_k] + 1);
-		if (num_left_task <= 0)
-			return false;
+	// 	int num_left_task = _target_stk.slot_size[_k] - (_target_stk.iter[_k] + 1);
+	// 	if (num_left_task <= 0)
+	// 		return false;
 
-		int stealed_start_idx_in_target = _target_stk.iter[_k] + 1 + num_left_task / ratio;
+	// 	int stealed_start_idx_in_target = _target_stk.iter[_k] + 1 + num_left_task / ratio;
 
 
-		// lvl 0 to _k - 1 (inclusive)
-		_cur_stk.slot_storage[0][_target_stk.iter[0]] = _target_stk.slot_storage[0][_target_stk.iter[0]];
-		_cur_stk.slot_storage[0][_target_stk.iter[0] + JOB_CHUNK_SIZE] = _target_stk.slot_storage[0][_target_stk.iter[0] + JOB_CHUNK_SIZE];
-		for (int i = 1; i < _k; i++)
-		{
-			_cur_stk.slot_storage[i][_target_stk.iter[i]] = _target_stk.slot_storage[i][_target_stk.iter[i]];
-		}
+	// 	// lvl 0 to _k - 1 (inclusive)
+	// 	_cur_stk.slot_storage[0][_target_stk.iter[0]] = _target_stk.slot_storage[0][_target_stk.iter[0]];
+	// 	_cur_stk.slot_storage[0][_target_stk.iter[0] + JOB_CHUNK_SIZE] = _target_stk.slot_storage[0][_target_stk.iter[0] + JOB_CHUNK_SIZE];
+	// 	for (int i = 1; i < _k; i++)
+	// 	{
+	// 		_cur_stk.slot_storage[i][_target_stk.iter[i]] = _target_stk.slot_storage[i][_target_stk.iter[i]];
+	// 	}
 
-		// lvl _k (inclusive)
-		int loop_end = _k == 0 ? JOB_CHUNK_SIZE * 2 : _target_stk.slot_size[_k];
-		for (int t = 0; t < loop_end; t++)
-		{
-			_cur_stk.slot_storage[_k][t] = _target_stk.slot_storage[_k][t];
-		}
+	// 	// lvl _k (inclusive)
+	// 	int loop_end = _k == 0 ? JOB_CHUNK_SIZE * 2 : _target_stk.slot_size[_k];
+	// 	for (int t = 0; t < loop_end; t++)
+	// 	{
+	// 		_cur_stk.slot_storage[_k][t] = _target_stk.slot_storage[_k][t];
+	// 	}
 
-		for (int l = 0; l < _k; l++)
-		{
-			_cur_stk.iter[l] = _target_stk.iter[l];
-			_cur_stk.slot_size[l] = _target_stk.iter[l] + 1;
-		}
+	// 	for (int l = 0; l < _k; l++)
+	// 	{
+	// 		_cur_stk.iter[l] = _target_stk.iter[l];
+	// 		_cur_stk.slot_size[l] = _target_stk.iter[l] + 1;
+	// 	}
 
-		_cur_stk.slot_size[_k] = _target_stk.slot_size[_k];
-		_cur_stk.iter[_k] = stealed_start_idx_in_target;
-		_target_stk.slot_size[_k] = stealed_start_idx_in_target;
+	// 	_cur_stk.slot_size[_k] = _target_stk.slot_size[_k];
+	// 	_cur_stk.iter[_k] = stealed_start_idx_in_target;
+	// 	_target_stk.slot_size[_k] = stealed_start_idx_in_target;
 
-		// copy
-		for (int l = _k + 1; l < _pat->nnodes - 1; l++)
-		{
-			_cur_stk.iter[l] = 0;
-			_cur_stk.slot_size[l] = 0;
-		}
-		_cur_stk.iter[_pat->nnodes - 1] = 0;
-		_cur_stk.slot_size[_pat->nnodes - 1] = 0;
+	// 	// copy
+	// 	for (int l = _k + 1; l < _pat->nnodes - 1; l++)
+	// 	{
+	// 		_cur_stk.iter[l] = 0;
+	// 		_cur_stk.slot_size[l] = 0;
+	// 	}
+	// 	_cur_stk.iter[_pat->nnodes - 1] = 0;
+	// 	_cur_stk.slot_size[_pat->nnodes - 1] = 0;
 	
-		_cur_stk.level = _k + 1;
-		return true;
-	}
+	// 	_cur_stk.level = _k + 1;
+	// 	return true;
+	// }
 	
-	__device__ bool trans_skt(CallStack *_all_stk, CallStack *_cur_stk, Pattern *pat, StealingArgs *_stealing_args)
-	{
+	// __device__ bool trans_skt(CallStack *_all_stk, CallStack *_cur_stk, Pattern *pat, StealingArgs *_stealing_args)
+	// {
 
-		int max_left_task = 0;
-		int stk_idx = -1;
-		int at_level = -1;
+	// 	int max_left_task = 0;
+	// 	int stk_idx = -1;
+	// 	int at_level = -1;
 
-		for (int level = 0; level < STOP_LEVEL; level++)
-		{
-			for (int i = 0; i < NWARPS_PER_BLOCK; i++)
-			{
-				if (i == threadIdx.x / WARP_SIZE)
-					continue;
-				lock(&(_stealing_args->local_mutex[i]));
+	// 	for (int level = 0; level < STOP_LEVEL; level++)
+	// 	{
+	// 		for (int i = 0; i < NWARPS_PER_BLOCK; i++)
+	// 		{
+	// 			if (i == threadIdx.x / WARP_SIZE)
+	// 				continue;
+	// 			lock(&(_stealing_args->local_mutex[i]));
 
-				int left_task = _all_stk[i].slot_size[level] - (_all_stk[i].iter[level] + 1);
-				if (left_task > max_left_task)
-				{
-					max_left_task = left_task;
-					stk_idx = i;
-					at_level = level;
-				}
-				unlock(&(_stealing_args->local_mutex[i]));
-			}
-			if (stk_idx != -1)
-				break;
-		}
+	// 			int left_task = _all_stk[i].slot_size[level] - (_all_stk[i].iter[level] + 1);
+	// 			if (left_task > max_left_task)
+	// 			{
+	// 				max_left_task = left_task;
+	// 				stk_idx = i;
+	// 				at_level = level;
+	// 			}
+	// 			unlock(&(_stealing_args->local_mutex[i]));
+	// 		}
+	// 		if (stk_idx != -1)
+	// 			break;
+	// 	}
 
-		if (stk_idx != -1)
-		{
-			bool res;
-			lock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
-			lock(&(_stealing_args->local_mutex[stk_idx]));
-			res = trans_layer(_all_stk[stk_idx], *_cur_stk, pat, at_level);
+	// 	if (stk_idx != -1)
+	// 	{
+	// 		bool res;
+	// 		lock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
+	// 		lock(&(_stealing_args->local_mutex[stk_idx]));
+	// 		res = trans_layer(_all_stk[stk_idx], *_cur_stk, pat, at_level);
 
-			unlock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
-			unlock(&(_stealing_args->local_mutex[stk_idx]));
-			return res;
-		}
-		return false;
-	}
+	// 		unlock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
+	// 		unlock(&(_stealing_args->local_mutex[stk_idx]));
+	// 		return res;
+	// 	}
+	// 	return false;
+	// }
 
 	__forceinline__ __device__ graph_node_t path(CallStack *stk, Pattern *pat, int level)
 	{
@@ -695,52 +695,52 @@ __forceinline__ __device__ bool bsearch_exist(PageBuffer_T set2, SIZE_T set2_siz
 	}
 
 	
-	__forceinline__ __device__ void respond_across_block(int level, CallStack *stk, Pattern *pat, StealingArgs *_stealing_args)
-	{
-		if (level > 0 && level <= DETECT_LEVEL)
-		{
-			if (threadIdx.x % WARP_SIZE == 0)
-			{
-				int at_level = -1;
-				int left_task = 0;
-				for (int l = 0; l < level; l++)
-				{
-					left_task = stk->slot_size[l] - stk->iter[l] - 1;
-					if (left_task > 0)
-					{
-						at_level = l;
-						break;
-					}
-				}
-				if (at_level != -1)
-				{
-					for (int b = 0; b < GRID_DIM; b++)
-					{
-						if (b == blockIdx.x)
-							continue;
-						if (atomicCAS(&(_stealing_args->global_mutex[b]), 0, 1) == 0)
-						{
-							if (atomicAdd(&_stealing_args->idle_warps[b], 0) == 0xFFFFFFFF)
-							{
-								__threadfence();
+	// __forceinline__ __device__ void respond_across_block(int level, CallStack *stk, Pattern *pat, StealingArgs *_stealing_args)
+	// {
+	// 	if (level > 0 && level <= DETECT_LEVEL)
+	// 	{
+	// 		if (threadIdx.x % WARP_SIZE == 0)
+	// 		{
+	// 			int at_level = -1;
+	// 			int left_task = 0;
+	// 			for (int l = 0; l < level; l++)
+	// 			{
+	// 				left_task = stk->slot_size[l] - stk->iter[l] - 1;
+	// 				if (left_task > 0)
+	// 				{
+	// 					at_level = l;
+	// 					break;
+	// 				}
+	// 			}
+	// 			if (at_level != -1)
+	// 			{
+	// 				for (int b = 0; b < GRID_DIM; b++)
+	// 				{
+	// 					if (b == blockIdx.x)
+	// 						continue;
+	// 					if (atomicCAS(&(_stealing_args->global_mutex[b]), 0, 1) == 0)
+	// 					{
+	// 						if (atomicAdd(&_stealing_args->idle_warps[b], 0) == 0xFFFFFFFF)
+	// 						{
+	// 							__threadfence();
 
-								trans_layer(*stk, _stealing_args->global_callstack[b * NWARPS_PER_BLOCK], pat, at_level, INT_MAX);
-								__threadfence();
+	// 							trans_layer(*stk, _stealing_args->global_callstack[b * NWARPS_PER_BLOCK], pat, at_level, INT_MAX);
+	// 							__threadfence();
 
-								atomicSub(_stealing_args->idle_warps_count, NWARPS_PER_BLOCK);
-								atomicExch(&_stealing_args->idle_warps[b], 0);
+	// 							atomicSub(_stealing_args->idle_warps_count, NWARPS_PER_BLOCK);
+	// 							atomicExch(&_stealing_args->idle_warps[b], 0);
 
-								atomicExch(&(_stealing_args->global_mutex[b]), 0);
-								break;
-							}
-							atomicExch(&(_stealing_args->global_mutex[b]), 0);
-						}
-					}
-				}
-			}
-			__syncwarp();
-		}
-	}
+	// 							atomicExch(&(_stealing_args->global_mutex[b]), 0);
+	// 							break;
+	// 						}
+	// 						atomicExch(&(_stealing_args->global_mutex[b]), 0);
+	// 					}
+	// 				}
+	// 			}
+	// 		}
+	// 		__syncwarp();
+	// 	}
+	// }
 	
 	template <typename MemoryManagerType>
 	__device__ void match(MemoryManagerType *mm, Graph *g, Pattern *pat,
