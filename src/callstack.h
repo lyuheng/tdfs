@@ -65,7 +65,7 @@ struct PageBuffer
                     index_map[cur_page_num] = new_page_addr;
                     // atomicAdd(page_num, 1);
                     *page_num += 1;
-                    __threadfence(); // TODO: removal is okay?
+                    // __threadfence(); // TODO: removal is okay?
                 }
                 __syncwarp(mask);
             }
