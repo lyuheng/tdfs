@@ -11,7 +11,7 @@ using namespace std;
 using namespace STMatch;
 
 #define TIMEOUT_QUEUE_CAP 1'000'000
-#define NUM_POINTERS 20
+#define NUM_POINTERS 40
 
 int main(int argc, char* argv[]) {
 
