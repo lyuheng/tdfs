@@ -874,7 +874,7 @@ __forceinline__ __device__ bool bsearch_exist(PageBuffer_T set2, SIZE_T set2_siz
 	__global__ void _parallel_match(MemoryManagerType *mm, Graph *dev_graph, Pattern *dev_pattern,
 									CallStack *dev_callstack, JobQueue *job_queue, size_t *res,
 									int *idle_warps, int *idle_warps_count, int *global_mutex,
-									Queue *queue)
+									Queue *queue, int *page_comsumption)
 	{
 		queue->init();
 
@@ -1008,7 +1008,11 @@ __forceinline__ __device__ bool bsearch_exist(PageBuffer_T set2, SIZE_T set2_siz
 			res[global_wid] = count[local_wid];
 			// printf("%d\t%ld\t%d\t%d\n", blockIdx.x, stop - start, stealed[local_wid], local_wid);
 			// printf("%ld\n", stop - start);
+
+      for(int i = 0; i < PAT_SIZE; ++i)
+        page_comsumption[i + global_wid * PAT_SIZE] = capacity[i + local_wid * PAT_SIZE];
 		}
+
 
 		// if(threadIdx.x % WARP_SIZE == 0)
 		//   printf("%d\t%d\t%d\n", blockIdx.x, local_wid, mutex_this_block[local_wid]);
