@@ -563,6 +563,7 @@ namespace STMatch
 			// TODO: change to warp
 
 			graph_node_t cur_job, njobs;
+			stk->stealed_task = false;
 			
 			if (threadIdx.x % WARP_SIZE == 0)
 			{
@@ -572,7 +573,6 @@ namespace STMatch
 					stk->slot_storage[0][0] = x;
 					stk->slot_storage[0][JOB_CHUNK_SIZE] = y;
 					stk->slot_size[0] = 1;
-					stk->stealed_task = false;
 
 					if (z != DeletionMarker<int>::val - 1)
 					{
@@ -597,8 +597,6 @@ namespace STMatch
                     //     }
                     // }
                     // stk->slot_size[0] = njobs;
-
-					stk->stealed_task = false;
 				}
 			}
 			__syncwarp();
@@ -737,7 +735,7 @@ namespace STMatch
 					arg[wid].set2_size = neighbor_cnt;
 					arg[wid].res = stk->slot_storage[level];
 					arg[wid].res_size = &(stk->slot_size[level]);
-					last_round = (pat->num_BN_sh[actual_lvl] == 2) ? true : false;
+					last_round = (pat->num_BN_sh[actual_lvl] == 1) ? true : false;
 					compute_intersection(&arg[wid], stk, last_round, true);
 
 					for (int i = 1; i < pat->num_BN_sh[actual_lvl]; ++i)
