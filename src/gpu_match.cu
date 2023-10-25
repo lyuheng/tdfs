@@ -608,7 +608,7 @@ namespace STMatch
 			int actual_lvl = level + 1;
 
 			bool last_round;
-			
+
 			if (pat->shared_lvl[actual_lvl] == -1)
 			{
 				if (pat->num_BN[actual_lvl] == 0)
@@ -723,10 +723,10 @@ namespace STMatch
 					int dep = pat->shared_lvl[actual_lvl];
 					int* neighbor = stk->slot_storage[dep - 1];
 					int neighbor_cnt = stk->slot_size[dep - 1];
-					arg[wid].set1 = neighbor;
-					arg[wid].set1_size = neighbor_cnt;
-					arg[wid].set2 = &g->colidx[g->rowptr[t_min]];
-					arg[wid].set2_size = min_neighbor;
+					arg[wid].set1 = &g->colidx[g->rowptr[t_min]];
+					arg[wid].set1_size = min_neighbor;
+					arg[wid].set2 = neighbor;
+					arg[wid].set2_size = neighbor_cnt;
 					arg[wid].res = stk->slot_storage[level];
 					arg[wid].res_size = &(stk->slot_size[level]);
 					last_round = (pat->num_BN[actual_lvl] == 2) ? true : false;
