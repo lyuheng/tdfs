@@ -607,7 +607,8 @@ namespace STMatch
 
 			int actual_lvl = level + 1;
 
-
+			bool last_round;
+			
 			if (pat->shared_lvl[actual_lvl] == -1)
 			{
 				if (pat->num_BN[actual_lvl] == 0)
@@ -639,7 +640,6 @@ namespace STMatch
 					// arr_copy(stk->slot_storage[level], &g->colidx[g->rowptr[t_min]], min_neighbor);
 					// stk->slot_size[level] = min_neighbor;
 
-					bool last_round;
 					if (i_min != 0)
 					{
 						BN = pat->backward_neighbors[actual_lvl][0];
@@ -720,9 +720,9 @@ namespace STMatch
 					int t_min = t;
 					int min_neighbor = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
 
-					int dep = pat->pat->shared_lvl[actual_lvl];
+					int dep = pat->shared_lvl[actual_lvl];
 					int* neighbor = stk->slot_storage[dep - 1];
-					int neighbor_cnt = stk->slot_storage[dep - 1];
+					int neighbor_cnt = stk->slot_size[dep - 1];
 					arg[wid].set1 = neighbor;
 					arg[wid].set1_size = neighbor_cnt;
 					arg[wid].set2 = &g->colidx[g->rowptr[t_min]];
