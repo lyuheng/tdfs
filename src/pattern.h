@@ -57,6 +57,8 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
     bitarray32 partial_ori[PAT_SIZE][PAT_SIZE];
 
     int shared_lvl[PAT_SIZE]; // if no share, -1
+    int backward_neighbors_sh[PAT_SIZE][PAT_SIZE];
+    int num_BN_sh[PAT_SIZE];
   } Pattern;
 
 
@@ -394,14 +396,14 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
         std::cout << dep << " ";
         if (dep != -1)
         {
-          pat.num_BN[i] = 0;
+          pat.num_BN_sh[i] = 0;
           for (int j = i - 1; j >= 0; --j)
           {
             if ( (nbr_bits[i] & (1 << j)) > 0
                 && (nbr_bits[dep] & (1 << j)) == 0 )
             {
               std::cout << j << " ";
-              pat.backward_neighbors[i][pat.num_BN[i]++] = j;
+              pat.backward_neighbors_sh[i][pat.num_BN_sh[i]++] = j;
             }
           }
         }

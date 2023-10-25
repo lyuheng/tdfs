@@ -716,13 +716,13 @@ namespace STMatch
 			} 
 			else 
 			{
-				if (pat->num_BN[actual_lvl] == 0)
+				if (pat->num_BN_sh[actual_lvl] == 0)
 				{
 					arr_copy_shared(&arg[wid], stk);
 				}
 				else 
 				{
-					int BN = pat->backward_neighbors[actual_lvl][0];
+					int BN = pat->backward_neighbors_sh[actual_lvl][0];
 					graph_node_t t = path(stk, pat, BN - 1);
 					int i_min = 0;
 					int t_min = t;
@@ -737,14 +737,14 @@ namespace STMatch
 					arg[wid].set2_size = neighbor_cnt;
 					arg[wid].res = stk->slot_storage[level];
 					arg[wid].res_size = &(stk->slot_size[level]);
-					last_round = (pat->num_BN[actual_lvl] == 2) ? true : false;
+					last_round = (pat->num_BN_sh[actual_lvl] == 2) ? true : false;
 					compute_intersection(&arg[wid], stk, last_round, true);
 
-					for (int i = 1; i < pat->num_BN[actual_lvl]; ++i)
+					for (int i = 1; i < pat->num_BN_sh[actual_lvl]; ++i)
 					{
 						if (i == i_min) continue;
-						last_round = (i == pat->num_BN[actual_lvl] - 1) || (i == pat->num_BN[actual_lvl] - 2 && i_min == pat->num_BN[actual_lvl] - 1);
-						BN = pat->backward_neighbors[actual_lvl][i];
+						last_round = (i == pat->num_BN_sh[actual_lvl] - 1) || (i == pat->num_BN_sh[actual_lvl] - 2 && i_min == pat->num_BN_sh[actual_lvl] - 1);
+						BN = pat->backward_neighbors_sh[actual_lvl][i];
 						t = path(stk, pat, BN - 1);
 						int* neighbor = &g->colidx[g->rowptr[t]];
 						int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
