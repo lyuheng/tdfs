@@ -55,6 +55,8 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
     int condition_cnt[PAT_SIZE];
     int vertex_labels[PAT_SIZE];
     bitarray32 partial_ori[PAT_SIZE][PAT_SIZE];
+
+    int shared_lvl[PAT_SIZE]; // if no share, -1
   } Pattern;
 
 
@@ -360,6 +362,33 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
           std::cout << pat.backward_neighbors[i][j] << " ";
         } 
         std::cout << "\n";
+      }
+      std::cout << std::endl;
+
+      // ======================= find shared computation ===============
+      int nbr_bits[PAT_SIZE];
+      pat.shared_lvl[0] = -1;
+      for(int i = 1; i < pat.nnodes; ++i)
+      {
+        nbr_bits[i] = 0;
+        for(int j = 0; j < i; ++j)
+        {
+          if (adj_matrix_[j][i] > 0)
+            nbr_bits[i] |= (1 << j);
+        }
+        for(int j = 2; j < i; ++j)
+        {
+          if (nbr_bits[i] & nbr_bits[j] == nbr_bits[j] && pat.num_BN[i] >= 2 && pat.num_BN[j] >= 2)
+          {
+            pat.shared_lvl[i] = j;
+            break;
+          }
+          pat.shared_lvl[i] = -1;
+        }
+      }
+      for(int i = 0; i < pat.nnodes; ++i)
+      {
+        std::cout << pat.shared_lvl[i] << " ";
       }
       std::cout << std::endl;
       // ======================= execute condition array ===============
