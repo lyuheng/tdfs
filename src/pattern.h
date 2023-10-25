@@ -390,7 +390,8 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
       }
       for(int i = 0; i < pat.nnodes; ++i)
       {
-        std::cout << pat.shared_lvl[i] << " ";
+        std::cout << nbr_bits[i] << " ";
+        std::cout << pat.shared_lvl[i] << "| ";
       }
       std::cout << std::endl;
       // ======================= execute condition array ===============
