@@ -466,7 +466,7 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
             for (int k = 0; k < pat.condition_cnt[i]; ++k)
             {
               int op3 = pat.condition_order[i * PAT_SIZE * 2 + k * 2];
-              int op4 = pat.condition_order[i * PAT_SIZE * 2 + k * 2];
+              int op4 = pat.condition_order[i * PAT_SIZE * 2 + k * 2 + 1];
               if (op1 == op3 && op2 == op4)
               {
                 found = true;
