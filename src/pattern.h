@@ -368,6 +368,7 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
       // ======================= find shared computation ===============
       int nbr_bits[PAT_SIZE];
       pat.shared_lvl[0] = -1;
+      pat.shared_lvl[1] = -1;
       for(int i = 1; i < pat.nnodes; ++i)
       {
         nbr_bits[i] = 0;
