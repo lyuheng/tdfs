@@ -617,7 +617,7 @@ namespace STMatch
 			int dep = pat->shared_lvl[actual_lvl];
 
 			if (dep == -1 ||
-				(dep == 1 && stk->stealed_task))
+				(dep == 2 && stk->stealed_task))
 			{
 				if (pat->num_BN[actual_lvl] == 0)
 					assert(false);
