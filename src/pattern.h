@@ -379,7 +379,7 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
         }
         for(int j = i-1; j >= 1; --j)
         {
-          if (nbr_bits[i] & nbr_bits[j] == nbr_bits[j] 
+          if ((nbr_bits[i] & nbr_bits[j]) == nbr_bits[j] 
           && pat.num_BN[i] >= 2 && pat.num_BN[j] >= 2)
           {
             std::cout << nbr_bits[i] << " " << nbr_bits[j] << " " << int(nbr_bits[i] & nbr_bits[j]) << std::endl;
