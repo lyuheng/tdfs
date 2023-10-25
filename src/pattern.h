@@ -394,9 +394,9 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
         if (pat.shared_lvl[i] != -1)
         {
           pat.num_BN[i] = 0;
-          for(int j = i-1; j>=0; --j)
+          for (int j = i - 1; j >= 0; --j)
           {
-            if ((nbr_bits[j] & (1 << j)) > 0)
+            if ((nbr_bits[i] & (1 << j)) > 0)
             {
               std::cout << j << " ";
               pat.backward_neighbors[i][pat.num_BN[i]++] = j;
