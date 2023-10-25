@@ -6,7 +6,7 @@
 #define LANEID (threadIdx.x % WARP_SIZE)
 #define PEAK_CLK (float)1410000 // A100
 #define ELAPSED_TIME(start) (clock() - start)/PEAK_CLK // in ms
-#define TIMEOUT 10000000 // timeout
+#define TIMEOUT 10 // timeout
 
 namespace STMatch
 {
@@ -572,12 +572,15 @@ namespace STMatch
 					stk->slot_storage[0][0] = x;
 					stk->slot_storage[0][JOB_CHUNK_SIZE] = y;
 					stk->slot_size[0] = 1;
+					stk->stealed_task = false;
 
 					if (z != DeletionMarker<int>::val - 1)
 					{
 						level = 1;
 						stk->slot_storage[1][0] = z;
 						stk->slot_size[1] = 1;
+
+						stk->stealed_task = true;
 					}
 				}
 				else
@@ -594,6 +597,8 @@ namespace STMatch
                     //     }
                     // }
                     // stk->slot_size[0] = njobs;
+
+					stk->stealed_task = false;
 				}
 			}
 			__syncwarp();
@@ -608,8 +613,11 @@ namespace STMatch
 			int actual_lvl = level + 1;
 
 			bool last_round;
+			
+			int dep = pat->shared_lvl[actual_lvl];
 
-			if (pat->shared_lvl[actual_lvl] == -1)
+			if (dep == -1 ||
+				(dep == 1 && stk->stealed_task))
 			{
 				if (pat->num_BN[actual_lvl] == 0)
 					assert(false);
