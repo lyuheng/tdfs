@@ -435,7 +435,7 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
                 break;
               }
             }
-            if (!skip) 
+            if (!skip)
             {
               pat.condition_order[index] = CondOperator::NON_EQUAL;
               pat.condition_order[index + 1] = j;
@@ -449,11 +449,34 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
       std::cout << "# Conditions:\n"; 
       for(int i = 0; i < pat.nnodes; ++i)
       {
+        int dep = pat.shared_lvl[i];
         for (int j = 0; j < pat.condition_cnt[i]; ++j)
         {
           std::cout << pat.condition_order[i * PAT_SIZE * 2 + j * 2] << " " 
                     << pat.condition_order[i * PAT_SIZE * 2 + j * 2 + 1] << " | ";
         } 
+
+        if (dep != -1)
+        {
+          for (int j = 0; j < pat.condition_cnt[dep]; ++j)
+          {
+            int op1 = pat.condition_order[dep * PAT_SIZE * 2 + j * 2];
+            int op2 = pat.condition_order[dep * PAT_SIZE * 2 + j * 2 + 1];
+            bool found = false;
+            for (int k = 0; k < pat.condition_cnt[i]; ++k)
+            {
+              int op3 = pat.condition_order[i * PAT_SIZE * 2 + k * 2];
+              int op4 = pat.condition_order[i * PAT_SIZE * 2 + k * 2];
+              if (op1 == op3 && op2 == op4)
+              {
+                found = true;
+                break;
+              }
+            }
+            if (!found)
+              pat.shared_lvl[i] = -1;
+          }
+        }
         std::cout << "\n";
       }
       std::cout << std::endl;
