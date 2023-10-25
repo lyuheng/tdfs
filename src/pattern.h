@@ -390,20 +390,22 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
       }
       for(int i = 0; i < pat.nnodes; ++i)
       {
-        std::cout << pat.shared_lvl[i] << " ";
-        if (pat.shared_lvl[i] != -1)
+        int dep = pat.shared_lvl[i];
+        std::cout << dep << " ";
+        if (dep != -1)
         {
           pat.num_BN[i] = 0;
           for (int j = i - 1; j >= 0; --j)
           {
-            if ((nbr_bits[i] & (1 << j)) > 0)
+            if ( (nbr_bits[i] & (1 << j)) > 0
+                && (nbr_bits[dep] & (1 << j)) == 0 )
             {
               std::cout << j << " ";
               pat.backward_neighbors[i][pat.num_BN[i]++] = j;
             }
           }
-          std::cout << "| ";
         }
+        std::cout << "| ";
       }
       std::cout << std::endl;
       // ======================= execute condition array ===============
