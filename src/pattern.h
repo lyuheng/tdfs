@@ -476,7 +476,7 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
         //     if (!found)
         //       pat.shared_lvl[i] = -1;
           // }
-        }
+        // }
         std::cout << "\n";
       }
       std::cout << std::endl;
