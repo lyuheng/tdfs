@@ -463,7 +463,24 @@ namespace STMatch
 					}
 				} 
 				else
-					assert(false);
+				{
+					if (arg->g->vertex_label[target] != cur_label)
+					{
+						pred = false;
+					}
+					// STMatch does no check 
+					if (pred)
+					{
+						for (int k = -1; k < arg->level; ++k)
+						{
+							int cond_vertex_M = path(stk, arg->pat, k);
+							if (cond_vertex_M == target) {
+								pred = false;
+								break;
+							}
+						}
+					}
+				}
 			}
 			int loc = scanIndex(pred) + res_length;
 			if (arg->level < arg->pat->nnodes - 2 && pred)

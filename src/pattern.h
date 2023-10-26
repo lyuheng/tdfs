@@ -382,7 +382,8 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
         for(int j = i-1; j >= 1; --j)
         {
           if ((nbr_bits[i] & nbr_bits[j]) == nbr_bits[j] &&
-              pat.num_BN[i] >= 2 && pat.num_BN[j] >= 2)
+              pat.num_BN[i] >= 2 && pat.num_BN[j] >= 2 && 
+              vertex_labels[i] == vertex_labels[j] )
           {
             pat.shared_lvl[i] = j;
             break;
@@ -456,7 +457,7 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
                     << pat.condition_order[i * PAT_SIZE * 2 + j * 2 + 1] << " | ";
         } 
 
-        if (dep != -1)
+        if (dep != -1 && !LABELED)
         {
           for (int j = 0; j < pat.condition_cnt[dep]; ++j)
           {
