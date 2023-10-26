@@ -456,26 +456,26 @@ inline std::string GetCondOperatorString(const CondOperator& op) {
                     << pat.condition_order[i * PAT_SIZE * 2 + j * 2 + 1] << " | ";
         } 
 
-        if (dep != -1)
-        {
-          for (int j = 0; j < pat.condition_cnt[dep]; ++j)
-          {
-            int op1 = pat.condition_order[dep * PAT_SIZE * 2 + j * 2];
-            int op2 = pat.condition_order[dep * PAT_SIZE * 2 + j * 2 + 1];
-            bool found = false;
-            for (int k = 0; k < pat.condition_cnt[i]; ++k)
-            {
-              int op3 = pat.condition_order[i * PAT_SIZE * 2 + k * 2];
-              int op4 = pat.condition_order[i * PAT_SIZE * 2 + k * 2 + 1];
-              if (op1 == op3 && op2 == op4)
-              {
-                found = true;
-                break;
-              }
-            }
-            if (!found)
-              pat.shared_lvl[i] = -1;
-          }
+        // if (dep != -1)
+        // {
+        //   for (int j = 0; j < pat.condition_cnt[dep]; ++j)
+        //   {
+        //     int op1 = pat.condition_order[dep * PAT_SIZE * 2 + j * 2];
+        //     int op2 = pat.condition_order[dep * PAT_SIZE * 2 + j * 2 + 1];
+        //     bool found = false;
+        //     for (int k = 0; k < pat.condition_cnt[i]; ++k)
+        //     {
+        //       int op3 = pat.condition_order[i * PAT_SIZE * 2 + k * 2];
+        //       int op4 = pat.condition_order[i * PAT_SIZE * 2 + k * 2 + 1];
+        //       if (op1 == op3 && op2 == op4)
+        //       {
+        //         found = true;
+        //         break;
+        //       }
+        //     }
+        //     if (!found)
+        //       pat.shared_lvl[i] = -1;
+          // }
         }
         std::cout << "\n";
       }
