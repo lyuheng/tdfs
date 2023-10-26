@@ -421,6 +421,7 @@ namespace STMatch
 		int actual_lvl = arg->level + 1;
 		bool pred;
 		int target;
+		int cur_label = arg->pat->vertex_labels[actual_lvl];
 		
 		graph_node_t dep = arg->pat->shared_lvl[actual_lvl];
 		assert(dep != -1);
