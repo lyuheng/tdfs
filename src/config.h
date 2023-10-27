@@ -12,7 +12,7 @@ namespace STMatch {
   inline constexpr size_t GRAPH_DEGREE = 4096;
   inline constexpr size_t MAX_SLOT_NUM = 15;
 
-#include "config_for_ae/fig_local_global_unroll.h" 
+// #include "config_for_ae/fig_local_global_unroll.h" 
 
   inline constexpr int GRID_DIM = 108;
   inline constexpr int BLOCK_DIM = 1024;

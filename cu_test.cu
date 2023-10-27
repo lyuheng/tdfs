@@ -2,10 +2,16 @@
 #include <iostream>
 #include "src/gpu_match.cuh"
 
+#include "src/Ouroboros/include/device/Ouroboros_impl.cuh"
+#include "src/Ouroboros/include/device/MemoryInitialization.cuh"
+#include "src/Ouroboros/include/InstanceDefinitions.cuh"
+#include "src/Ouroboros/include/Utility.h"
+
 using namespace std;
 using namespace STMatch;
 
 #define TIMEOUT_QUEUE_CAP 1'000'000
+#define NUM_POINTERS 40
 
 int main(int argc, char* argv[]) {
 
@@ -25,6 +31,10 @@ int main(int argc, char* argv[]) {
       std::cout << std::endl;
   }
 
+  size_t instantitation_size = 4ULL * 1024ULL * 1024ULL * 1024ULL; //4GB
+	MemoryManagerType memory_manager;
+	memory_manager.initialize(instantitation_size);
+
   // copy graph and pattern to GPU global memory
   Graph* gpu_graph = g.to_gpu();
   Pattern* gpu_pattern = p.to_gpu();
@@ -39,11 +49,19 @@ int main(int argc, char* argv[]) {
 
   std::vector<CallStack> stk(NWARPS_TOTAL);
 
+  graph_node_t **index_map;
+  cudaMalloc(&index_map, 8 * NUM_POINTERS * NWARPS_TOTAL * PAT_SIZE);
+
   for (int i = 0; i < NWARPS_TOTAL; i++) {
     auto& s = stk[i];
     memset(s.iter, 0, sizeof(s.iter));
     memset(s.slot_size, 0, sizeof(s.slot_size));
-    s.slot_storage = (graph_node_t(*)[GRAPH_DEGREE])((char*)slot_storage + i * sizeof(graph_node_t) * MAX_SLOT_NUM * GRAPH_DEGREE);
+    // s.slot_storage = (graph_node_t(*)[GRAPH_DEGREE])((char*)slot_storage + i * sizeof(graph_node_t) * MAX_SLOT_NUM * GRAPH_DEGREE);
+
+    s.slot_storage.mm = memory_manager.getDeviceMemoryManager();
+    for (int j = 0; j < PAT_SIZE; ++j) {
+      s.slot_storage.buffers[j].index_map = index_map + NUM_POINTERS * (i * PAT_SIZE + j);
+    }
   }
   cudaMalloc(&gpu_callstack, NWARPS_TOTAL * sizeof(CallStack));
   cudaMemcpy(gpu_callstack, stk.data(), sizeof(CallStack) * NWARPS_TOTAL, cudaMemcpyHostToDevice);
@@ -76,6 +94,14 @@ int main(int argc, char* argv[]) {
   gpu_timeout_queue->queue_ = gpu_timeout_queue_space;
   gpu_timeout_queue->size_ = TIMEOUT_QUEUE_CAP * (STOP_LEVEL + 1);
   gpu_timeout_queue->resetQueue();
+
+  // record #pages used during execution
+  int *gpu_page_consumption;
+  cudaMalloc(&gpu_page_consumption, sizeof(int) * NWARPS_TOTAL * PAT_SIZE);
+
+  allocate_memory<<<GRID_DIM, BLOCK_DIM>>>(memory_manager.getDeviceMemoryManager(), gpu_callstack);
+  HANDLE_ERROR(cudaDeviceSynchronize());
+  std::cout << "finished allocate memory on GPU ..." << std::endl;
   
   // timer starts here
   cudaEvent_t start, stop;
@@ -85,8 +111,8 @@ int main(int argc, char* argv[]) {
 
   //cout << "shared memory usage: " << sizeof(Graph) << " " << sizeof(Pattern) << " " << sizeof(JobQueue) << " " << sizeof(CallStack) * NWARPS_PER_BLOCK << " " << NWARPS_PER_BLOCK * 33 * sizeof(int) << " Bytes" << endl;
 
-  _parallel_match << <GRID_DIM, BLOCK_DIM >> > (gpu_graph, gpu_pattern, gpu_callstack, gpu_queue, gpu_res, idle_warps, 
-                                              idle_warps_count, global_mutex, gpu_timeout_queue);
+  _parallel_match << <GRID_DIM, BLOCK_DIM >> > (memory_manager.getDeviceMemoryManager(), gpu_graph, gpu_pattern, gpu_callstack, gpu_queue, gpu_res, idle_warps, 
+                                              idle_warps_count, global_mutex, gpu_timeout_queue, gpu_page_consumption);
 
 
   cudaEventRecord(stop);
@@ -99,12 +125,25 @@ int main(int argc, char* argv[]) {
 
   cudaMemcpy(res, gpu_res, sizeof(size_t) * NWARPS_TOTAL, cudaMemcpyDeviceToHost);
 
+  // obtain how many pages each level use 
+  int *page_consumption = new int[NWARPS_TOTAL * PAT_SIZE];
+  cudaMemcpy(page_consumption, gpu_page_consumption, sizeof(int)*NWARPS_TOTAL * PAT_SIZE, cudaMemcpyDeviceToHost);
+  int page_ttl = 0;
+  for(int i = 0; i < NWARPS_TOTAL * PAT_SIZE; ++i)
+  {
+    assert(page_consumption[i] > 0);
+    page_ttl += page_consumption[i];
+  }
+  std::cout << "Total page # = " << page_ttl << std::endl;
+  delete[] page_consumption;
+
   unsigned long long tot_count = 0;
   for (int i=0; i<NWARPS_TOTAL; i++) tot_count += res[i];
 
   if(!LABELED) tot_count = tot_count * p.PatternMultiplicity;
   
   printf("%s\t%f\t%llu\n", argv[2], milliseconds, tot_count);
+
   //cout << "count: " << tot_count << endl;
   return 0;
 }

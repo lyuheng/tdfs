@@ -3,10 +3,15 @@
 
 #define UNROLL_SIZE(l) (l > 0 ? UNROLL : 1)
 
+// gpu terminology
 #define LANEID (threadIdx.x % WARP_SIZE)
+#define WARPID (threadIdx.x >> 5) 
+#define GLWARPID (blockIdx.x * NWARPS_PER_BLOCK + WARPID)
+
+// hyperparameters
 #define PEAK_CLK (float)1410000 // A100
 #define ELAPSED_TIME(start) (clock() - start)/PEAK_CLK // in ms
-#define TIMEOUT 1 // timeout
+#define TIMEOUT 10 // timeout
 
 namespace STMatch
 {
@@ -32,121 +37,124 @@ namespace STMatch
 	}
 	
 	// target_stk is the warp being stolen
-	__device__ bool trans_layer(CallStack &_target_stk, CallStack &_cur_stk, Pattern *_pat, int _k, int ratio = 2)
-	{
-		if (_target_stk.level <= _k)
-			return false;
+	// __device__ bool trans_layer(CallStack &_target_stk, CallStack &_cur_stk, Pattern *_pat, int _k, int ratio = 2)
+	// {
+	// 	if (_target_stk.level <= _k)
+	// 		return false;
 
-		int num_left_task = _target_stk.slot_size[_k] - (_target_stk.iter[_k] + 1);
-		if (num_left_task <= 0)
-			return false;
+	// 	int num_left_task = _target_stk.slot_size[_k] - (_target_stk.iter[_k] + 1);
+	// 	if (num_left_task <= 0)
+	// 		return false;
 
-		int stealed_start_idx_in_target = _target_stk.iter[_k] + 1 + num_left_task / ratio;
+	// 	int stealed_start_idx_in_target = _target_stk.iter[_k] + 1 + num_left_task / ratio;
 
 
-		// lvl 0 to _k - 1 (inclusive)
-		_cur_stk.slot_storage[0][_target_stk.iter[0]] = _target_stk.slot_storage[0][_target_stk.iter[0]];
-		_cur_stk.slot_storage[0][_target_stk.iter[0] + JOB_CHUNK_SIZE] = _target_stk.slot_storage[0][_target_stk.iter[0] + JOB_CHUNK_SIZE];
-		for (int i = 1; i < _k; i++)
-		{
-			_cur_stk.slot_storage[i][_target_stk.iter[i]] = _target_stk.slot_storage[i][_target_stk.iter[i]];
-		}
+	// 	// lvl 0 to _k - 1 (inclusive)
+	// 	_cur_stk.slot_storage[0][_target_stk.iter[0]] = _target_stk.slot_storage[0][_target_stk.iter[0]];
+	// 	_cur_stk.slot_storage[0][_target_stk.iter[0] + JOB_CHUNK_SIZE] = _target_stk.slot_storage[0][_target_stk.iter[0] + JOB_CHUNK_SIZE];
+	// 	for (int i = 1; i < _k; i++)
+	// 	{
+	// 		_cur_stk.slot_storage[i][_target_stk.iter[i]] = _target_stk.slot_storage[i][_target_stk.iter[i]];
+	// 	}
 
-		// lvl _k (inclusive)
-		int loop_end = _k == 0 ? JOB_CHUNK_SIZE * 2 : _target_stk.slot_size[_k];
-		for (int t = 0; t < loop_end; t++)
-		{
-			_cur_stk.slot_storage[_k][t] = _target_stk.slot_storage[_k][t];
-		}
+	// 	// lvl _k (inclusive)
+	// 	int loop_end = _k == 0 ? JOB_CHUNK_SIZE * 2 : _target_stk.slot_size[_k];
+	// 	for (int t = 0; t < loop_end; t++)
+	// 	{
+	// 		_cur_stk.slot_storage[_k][t] = _target_stk.slot_storage[_k][t];
+	// 	}
 
-		for (int l = 0; l < _k; l++)
-		{
-			_cur_stk.iter[l] = _target_stk.iter[l];
-			_cur_stk.slot_size[l] = _target_stk.iter[l] + 1;
-		}
+	// 	for (int l = 0; l < _k; l++)
+	// 	{
+	// 		_cur_stk.iter[l] = _target_stk.iter[l];
+	// 		_cur_stk.slot_size[l] = _target_stk.iter[l] + 1;
+	// 	}
 
-		_cur_stk.slot_size[_k] = _target_stk.slot_size[_k];
-		_cur_stk.iter[_k] = stealed_start_idx_in_target;
-		_target_stk.slot_size[_k] = stealed_start_idx_in_target;
+	// 	_cur_stk.slot_size[_k] = _target_stk.slot_size[_k];
+	// 	_cur_stk.iter[_k] = stealed_start_idx_in_target;
+	// 	_target_stk.slot_size[_k] = stealed_start_idx_in_target;
 
-		// copy
-		for (int l = _k + 1; l < _pat->nnodes - 1; l++)
-		{
-			_cur_stk.iter[l] = 0;
-			_cur_stk.slot_size[l] = 0;
-		}
-		_cur_stk.iter[_pat->nnodes - 1] = 0;
-		_cur_stk.slot_size[_pat->nnodes - 1] = 0;
+	// 	// copy
+	// 	for (int l = _k + 1; l < _pat->nnodes - 1; l++)
+	// 	{
+	// 		_cur_stk.iter[l] = 0;
+	// 		_cur_stk.slot_size[l] = 0;
+	// 	}
+	// 	_cur_stk.iter[_pat->nnodes - 1] = 0;
+	// 	_cur_stk.slot_size[_pat->nnodes - 1] = 0;
 	
-		_cur_stk.level = _k + 1;
-		return true;
-	}
+	// 	_cur_stk.level = _k + 1;
+	// 	return true;
+	// }
 	
-	__device__ bool trans_skt(CallStack *_all_stk, CallStack *_cur_stk, Pattern *pat, StealingArgs *_stealing_args)
-	{
+	// __device__ bool trans_skt(CallStack *_all_stk, CallStack *_cur_stk, Pattern *pat, StealingArgs *_stealing_args)
+	// {
 
-		int max_left_task = 0;
-		int stk_idx = -1;
-		int at_level = -1;
+	// 	int max_left_task = 0;
+	// 	int stk_idx = -1;
+	// 	int at_level = -1;
 
-		for (int level = 0; level < STOP_LEVEL; level++)
-		{
-			for (int i = 0; i < NWARPS_PER_BLOCK; i++)
-			{
-				if (i == threadIdx.x / WARP_SIZE)
-					continue;
-				lock(&(_stealing_args->local_mutex[i]));
+	// 	for (int level = 0; level < STOP_LEVEL; level++)
+	// 	{
+	// 		for (int i = 0; i < NWARPS_PER_BLOCK; i++)
+	// 		{
+	// 			if (i == threadIdx.x / WARP_SIZE)
+	// 				continue;
+	// 			lock(&(_stealing_args->local_mutex[i]));
 
-				int left_task = _all_stk[i].slot_size[level] - (_all_stk[i].iter[level] + 1);
-				if (left_task > max_left_task)
-				{
-					max_left_task = left_task;
-					stk_idx = i;
-					at_level = level;
-				}
-				unlock(&(_stealing_args->local_mutex[i]));
-			}
-			if (stk_idx != -1)
-				break;
-		}
+	// 			int left_task = _all_stk[i].slot_size[level] - (_all_stk[i].iter[level] + 1);
+	// 			if (left_task > max_left_task)
+	// 			{
+	// 				max_left_task = left_task;
+	// 				stk_idx = i;
+	// 				at_level = level;
+	// 			}
+	// 			unlock(&(_stealing_args->local_mutex[i]));
+	// 		}
+	// 		if (stk_idx != -1)
+	// 			break;
+	// 	}
 
-		if (stk_idx != -1)
-		{
-			bool res;
-			lock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
-			lock(&(_stealing_args->local_mutex[stk_idx]));
-			res = trans_layer(_all_stk[stk_idx], *_cur_stk, pat, at_level);
+	// 	if (stk_idx != -1)
+	// 	{
+	// 		bool res;
+	// 		lock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
+	// 		lock(&(_stealing_args->local_mutex[stk_idx]));
+	// 		res = trans_layer(_all_stk[stk_idx], *_cur_stk, pat, at_level);
 
-			unlock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
-			unlock(&(_stealing_args->local_mutex[stk_idx]));
-			return res;
-		}
-		return false;
-	}
+	// 		unlock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
+	// 		unlock(&(_stealing_args->local_mutex[stk_idx]));
+	// 		return res;
+	// 	}
+	// 	return false;
+	// }
 
 	__forceinline__ __device__ graph_node_t path(CallStack *stk, Pattern *pat, int level)
 	{
 		if (level > 0)
-			return stk->slot_storage[level][stk->iter[level]];
+			return stk->slot_storage(level, stk->iter[level]);
 		else
 		{
-			return stk->slot_storage[0][stk->iter[0] + (level + 1) * JOB_CHUNK_SIZE]; // level=-1 or 0
+			return stk->slot_storage(0, stk->iter[0] + (level + 1) * JOB_CHUNK_SIZE); // level=-1 or 0
 		}
 	}
 
 	__forceinline__ __device__ graph_node_t *path_address(CallStack *stk, Pattern *pat, int level)
 	{
 		if (level > 0)
-			return &(stk->slot_storage[level][stk->iter[level]]);
+			return &(stk->slot_storage(level, stk->iter[level]));
 		else
 		{
-			return &(stk->slot_storage[0][stk->iter[0] + (level + 1) * JOB_CHUNK_SIZE]); // -1 or 0
+			return &(stk->slot_storage(0, stk->iter[0] + (level + 1) * JOB_CHUNK_SIZE)); // level=-1 or 0
 		}
 	}
 
 	typedef struct
 	{
-		graph_node_t *set1, *set2, *res;
+		// graph_node_t *set1, *set2, *res;
+		// replace to dynamic memory version
+		PageBuffer<graph_node_t, MemoryManagerType> set1, set2, res;
+
 		graph_node_t set1_size, set2_size, *res_size;
 		graph_node_t ub;
 		bitarray32 label;
@@ -156,6 +164,37 @@ namespace STMatch
 		int level;
 		Pattern *pat;
 	} Arg_t;
+
+
+template <typename PageBuffer_T, typename DATA_T, typename SIZE_T, typename MemoryManagerType>
+__forceinline__ __device__ bool bsearch_exist(PageBuffer_T set2, SIZE_T set2_size, DATA_T target, MemoryManagerType *mm)
+{
+    if (set2_size <= 0)
+        return false;
+    int mid;
+    int low = 0;
+    int high = set2_size - 1;
+    while (low <= high)
+    {
+        mid = (low + high) / 2;
+
+        // assert(mid != 94);
+
+        if (target == set2(mid, mm))
+        {
+            return true;
+        }
+        else if (target > set2(mid, mm))
+        {
+            low = mid + 1;
+        }
+        else
+        {
+            high = mid - 1;
+        }
+    }
+    return false;
+}
 
 	template <typename DATA_T, typename SIZE_T>
 	__forceinline__ __device__ bool bsearch_exist(DATA_T *set2, SIZE_T set2_size, DATA_T target)
@@ -257,7 +296,8 @@ namespace STMatch
 		return index;
 	}
 
-	__forceinline__ __device__ void compute_intersection(Arg_t *arg, CallStack *stk, bool last_round, bool check_validity)
+	template <typename MemoryManagerType>
+	__forceinline__ __device__ void compute_intersection(MemoryManagerType *mm, Arg_t *arg, CallStack *stk, bool last_round, bool check_validity)
 	{
 		int res_length = 0;
 		int actual_lvl = arg->level + 1;
@@ -272,7 +312,7 @@ namespace STMatch
 			if (il < arg->set2_size)
 			{
 				pred = true;
-				target = arg->set2[il];
+				target = arg->set2(il, mm);
 
 				if (check_validity)
 				{
@@ -325,11 +365,11 @@ namespace STMatch
 						}
 					}
 				}
-				if (pred) pred = bsearch_exist(arg->set1, arg->set1_size, target);
+				if (pred) pred = bsearch_exist(arg->set1, arg->set1_size, target, mm);
 			}
 			int loc = scanIndex(pred) + res_length;
 			if ((arg->level < arg->pat->nnodes - 2 && pred) || ((arg->level == arg->pat->nnodes - 2) && !last_round && pred))
-				arg->res[loc] = target;
+				arg->res(loc, mm) = target;
 			if (threadIdx.x % WARP_SIZE == 31) // last lane's loc+pred is number of items found in this scan
 				res_length = loc + pred;
 			res_length = __shfl_sync(0xFFFFFFFF, res_length, 31);
@@ -407,7 +447,7 @@ namespace STMatch
 			}
 			int loc = scanIndex(pred) + res_length;
 			if (arg->level < arg->pat->nnodes - 2 && pred)
-				stk->slot_storage[arg->level][loc] = target;
+				stk->slot_storage(arg->level, loc) = target;
 			if (threadIdx.x % WARP_SIZE == 31) // last lane's loc+pred is number of items found in this scan
 				res_length = loc + pred;
 			res_length = __shfl_sync(0xFFFFFFFF, res_length, 31);
@@ -548,8 +588,8 @@ namespace STMatch
 								}
 								if (valid)
 								{
-									stk->slot_storage[0][cnt] = r;
-									stk->slot_storage[0][JOB_CHUNK_SIZE + cnt] = c;
+									stk->slot_storage(0, cnt) = r;
+									stk->slot_storage(0, JOB_CHUNK_SIZE + cnt) = c;
 									cnt++;
 								}
 							}
@@ -568,7 +608,8 @@ namespace STMatch
 		}
 	}
 
-	__device__ void extend(Graph *g, Pattern *pat, CallStack *stk, JobQueue *q, pattern_node_t level, long &start_clk, 
+	template <typename MemoryManagerType>
+	__device__ void extend(MemoryManagerType *mm, Graph *g, Pattern *pat, CallStack *stk, JobQueue *q, pattern_node_t level, long &start_clk, 
 							StealingArgs *_stealing_args)
 	{
 
@@ -588,14 +629,14 @@ namespace STMatch
 				int x, y, z;
 				bool ret = _stealing_args->queue->dequeue(x, y, z);
 				if (ret) {
-					stk->slot_storage[0][0] = x;
-					stk->slot_storage[0][JOB_CHUNK_SIZE] = y;
+					stk->slot_storage(0, 0) = x;
+					stk->slot_storage(0, JOB_CHUNK_SIZE) = y;
 					stk->slot_size[0] = 1;
 
 					if (z != DeletionMarker<int>::val - 1)
 					{
 						level = 1;
-						stk->slot_storage[1][0] = z;
+						stk->slot_storage(1, 0) = z;
 						stk->slot_size[1] = 1;
 
 						stk->stealed_task = true;
@@ -643,11 +684,29 @@ namespace STMatch
 				}
 				else
 				{
+<<<<<<< HEAD
 					int BN = pat->backward_neighbors[actual_lvl][0];
 					graph_node_t t = path(stk, pat, BN - 1);
 					int i_min = 0;
 					int t_min = t;
 					int min_neighbor = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
+=======
+					BN = pat->backward_neighbors[actual_lvl][0];
+					t = path(stk, pat, BN - 1);
+					int* neighbor = &g->colidx[g->rowptr[t]];
+					int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
+
+					arg[wid].set1.page_num = NULL;
+					arg[wid].set1.index_map = (graph_node_t **)neighbor;
+					arg[wid].set1_size = neighbor_cnt;
+					arg[wid].set2.page_num = NULL;
+					arg[wid].set2.index_map= (graph_node_t **)&g->colidx[g->rowptr[t_min]];
+					arg[wid].set2_size = min_neighbor;
+					arg[wid].res = stk->slot_storage(level);
+					arg[wid].res_size = &(stk->slot_size[level]);
+					last_round = (pat->num_BN[actual_lvl] == 2) ? true : false;
+					compute_intersection(mm, &arg[wid], stk, last_round, true);
+>>>>>>> dynMemory
 
 					for (int i = 1; i < pat->num_BN[actual_lvl]; ++i)
 					{
@@ -670,8 +729,10 @@ namespace STMatch
 						t = path(stk, pat, BN - 1);
 						int* neighbor = &g->colidx[g->rowptr[t]];
 						int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
-						arg[wid].set1 = neighbor;
+						arg[wid].set1.page_num = NULL;
+						arg[wid].set1.index_map = (graph_node_t **)neighbor;
 						arg[wid].set1_size = neighbor_cnt;
+<<<<<<< HEAD
 						arg[wid].set2 = &g->colidx[g->rowptr[t_min]];
 						arg[wid].set2_size = min_neighbor;
 						arg[wid].res = stk->slot_storage[level];
@@ -727,6 +788,13 @@ namespace STMatch
 							arg[wid].res_size = &(stk->slot_size[level]);
 							compute_intersection(&arg[wid], stk, last_round, false);
 						}
+=======
+						arg[wid].set2 = stk->slot_storage(level);
+						arg[wid].set2_size = stk->slot_size[level];
+						arg[wid].res = stk->slot_storage(level);
+						arg[wid].res_size = &(stk->slot_size[level]);
+						compute_intersection(mm, &arg[wid], stk, last_round, false);
+>>>>>>> dynMemory
 					}
 				}
 			} 
@@ -734,6 +802,7 @@ namespace STMatch
 			{
 				if (pat->num_BN_sh[actual_lvl] == 0)
 				{
+<<<<<<< HEAD
 					arr_copy_shared(&arg[wid], stk);
 				}
 				else 
@@ -755,6 +824,22 @@ namespace STMatch
 					arg[wid].res_size = &(stk->slot_size[level]);
 					last_round = (pat->num_BN_sh[actual_lvl] == 1) ? true : false;
 					compute_intersection(&arg[wid], stk, last_round, true);
+=======
+					BN = pat->backward_neighbors[actual_lvl][1];
+					t = path(stk, pat, BN - 1);
+					int* neighbor = &g->colidx[g->rowptr[t]];
+					int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
+					arg[wid].set1.page_num = NULL;
+					arg[wid].set1.index_map = (graph_node_t **)neighbor;
+					arg[wid].set1_size = neighbor_cnt;
+					arg[wid].set2.page_num = NULL;
+					arg[wid].set2 = (graph_node_t **)&g->colidx[g->rowptr[t_min]];
+					arg[wid].set2_size = min_neighbor;
+					arg[wid].res = stk->slot_storage(level);
+					arg[wid].res_size = &(stk->slot_size[level]);
+					last_round = (pat->num_BN[actual_lvl] == 2) ? true : false;
+					compute_intersection(mm, &arg[wid], stk, last_round, true);
+>>>>>>> dynMemory
 
 					for (int i = 1; i < pat->num_BN_sh[actual_lvl]; ++i)
 					{
@@ -764,13 +849,14 @@ namespace STMatch
 						t = path(stk, pat, BN - 1);
 						int* neighbor = &g->colidx[g->rowptr[t]];
 						int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
-						arg[wid].set1 = neighbor;
+						arg[wid].set1.page_num = NULL;
+						arg[wid].set1.index_map =(graph_node_t **)neighbor;
 						arg[wid].set1_size = neighbor_cnt;
-						arg[wid].set2 = stk->slot_storage[level];
+						arg[wid].set2 = stk->slot_storage(level);
 						arg[wid].set2_size = stk->slot_size[level];
-						arg[wid].res = stk->slot_storage[level];
+						arg[wid].res = stk->slot_storage(level);
 						arg[wid].res_size = &(stk->slot_size[level]);
-						compute_intersection(&arg[wid], stk, last_round, false);
+						compute_intersection(mm, &arg[wid], stk, last_round, false);
 					}
 				}
 			}
@@ -779,55 +865,55 @@ namespace STMatch
 	}
 
 	
-	__forceinline__ __device__ void respond_across_block(int level, CallStack *stk, Pattern *pat, StealingArgs *_stealing_args)
-	{
-		if (level > 0 && level <= DETECT_LEVEL)
-		{
-			if (threadIdx.x % WARP_SIZE == 0)
-			{
-				int at_level = -1;
-				int left_task = 0;
-				for (int l = 0; l < level; l++)
-				{
-					left_task = stk->slot_size[l] - stk->iter[l] - 1;
-					if (left_task > 0)
-					{
-						at_level = l;
-						break;
-					}
-				}
-				if (at_level != -1)
-				{
-					for (int b = 0; b < GRID_DIM; b++)
-					{
-						if (b == blockIdx.x)
-							continue;
-						if (atomicCAS(&(_stealing_args->global_mutex[b]), 0, 1) == 0)
-						{
-							if (atomicAdd(&_stealing_args->idle_warps[b], 0) == 0xFFFFFFFF)
-							{
-								__threadfence();
+	// __forceinline__ __device__ void respond_across_block(int level, CallStack *stk, Pattern *pat, StealingArgs *_stealing_args)
+	// {
+	// 	if (level > 0 && level <= DETECT_LEVEL)
+	// 	{
+	// 		if (threadIdx.x % WARP_SIZE == 0)
+	// 		{
+	// 			int at_level = -1;
+	// 			int left_task = 0;
+	// 			for (int l = 0; l < level; l++)
+	// 			{
+	// 				left_task = stk->slot_size[l] - stk->iter[l] - 1;
+	// 				if (left_task > 0)
+	// 				{
+	// 					at_level = l;
+	// 					break;
+	// 				}
+	// 			}
+	// 			if (at_level != -1)
+	// 			{
+	// 				for (int b = 0; b < GRID_DIM; b++)
+	// 				{
+	// 					if (b == blockIdx.x)
+	// 						continue;
+	// 					if (atomicCAS(&(_stealing_args->global_mutex[b]), 0, 1) == 0)
+	// 					{
+	// 						if (atomicAdd(&_stealing_args->idle_warps[b], 0) == 0xFFFFFFFF)
+	// 						{
+	// 							__threadfence();
 
-								trans_layer(*stk, _stealing_args->global_callstack[b * NWARPS_PER_BLOCK], pat, at_level, INT_MAX);
-								__threadfence();
+	// 							trans_layer(*stk, _stealing_args->global_callstack[b * NWARPS_PER_BLOCK], pat, at_level, INT_MAX);
+	// 							__threadfence();
 
-								atomicSub(_stealing_args->idle_warps_count, NWARPS_PER_BLOCK);
-								atomicExch(&_stealing_args->idle_warps[b], 0);
+	// 							atomicSub(_stealing_args->idle_warps_count, NWARPS_PER_BLOCK);
+	// 							atomicExch(&_stealing_args->idle_warps[b], 0);
 
-								atomicExch(&(_stealing_args->global_mutex[b]), 0);
-								break;
-							}
-							atomicExch(&(_stealing_args->global_mutex[b]), 0);
-						}
-					}
-				}
-			}
-			__syncwarp();
-		}
-	}
+	// 							atomicExch(&(_stealing_args->global_mutex[b]), 0);
+	// 							break;
+	// 						}
+	// 						atomicExch(&(_stealing_args->global_mutex[b]), 0);
+	// 					}
+	// 				}
+	// 			}
+	// 		}
+	// 		__syncwarp();
+	// 	}
+	// }
 	
-
-	__device__ void match(Graph *g, Pattern *pat,
+	template <typename MemoryManagerType>
+	__device__ void match(MemoryManagerType *mm, Graph *g, Pattern *pat,
 						  CallStack *stk, JobQueue *q, size_t *count, StealingArgs *_stealing_args, long &start_clk)
 	{
 
@@ -850,7 +936,7 @@ namespace STMatch
 
 				if (stk->slot_size[level] == 0)
 				{
-					extend(g, pat, stk, q, level, start_clk, _stealing_args);
+					extend(mm, g, pat, stk, q, level, start_clk, _stealing_args);
 					if (level == 0 && stk->slot_size[0] == 0)
 					{
 						// if (threadIdx.x % WARP_SIZE == 0)
@@ -926,7 +1012,7 @@ namespace STMatch
 			}
 			else if (level == pat->nnodes - 2)
 			{
-				extend(g, pat, stk, q, level, start_clk, _stealing_args);
+				extend(mm, g, pat, stk, q, level, start_clk, _stealing_args);
 
 				if (LANEID == 0)
 				{
@@ -948,7 +1034,8 @@ namespace STMatch
 		}
 	}
 
-	__global__ void _parallel_match(Graph *dev_graph, Pattern *dev_pattern,
+	template <typename MemoryManagerType>
+	__global__ void _parallel_match(MemoryManagerType *mm, Graph *dev_graph, Pattern *dev_pattern,
 									CallStack *dev_callstack, JobQueue *job_queue, size_t *res,
 									int *idle_warps, int *idle_warps_count, int *global_mutex,
 									Queue *queue)
@@ -971,6 +1058,8 @@ namespace STMatch
 
 		stealing_args.queue = queue;
 
+		__shared__ int capacity[NWARPS_PER_BLOCK * PAT_SIZE];
+
 		int global_tid = blockIdx.x * blockDim.x + threadIdx.x;
 		int global_wid = global_tid / WARP_SIZE;
 		int local_wid = threadIdx.x / WARP_SIZE;
@@ -981,6 +1070,16 @@ namespace STMatch
 			pat = *dev_pattern;
 		}
 		__syncthreads();
+
+		if (LANEID == 0)
+		{
+			for (int i = 0; i < PAT_SIZE; ++i) {
+				dev_callstack[global_wid].slot_storage.buffers[i].page_num = &capacity[i + local_wid * PAT_SIZE];
+				*(dev_callstack[global_wid].slot_storage.buffers[i].page_num) = 1;
+			}
+			__threadfence();
+		}
+		__syncwarp();
 
 		if (threadIdx.x % WARP_SIZE == 0)
 		{
@@ -1003,7 +1102,7 @@ namespace STMatch
 		while (true)
 		{
 			long start_clk = clock64();
-			match(&graph, &pat, &stk[local_wid], job_queue, &count[local_wid], &stealing_args, start_clk);
+			match(mm, &graph, &pat, &stk[local_wid], job_queue, &count[local_wid], &stealing_args, start_clk);
 			__syncwarp();
 
 			stealed[local_wid] = false;
@@ -1078,4 +1177,16 @@ namespace STMatch
 		// if(threadIdx.x % WARP_SIZE == 0)
 		//   printf("%d\t%d\t%d\n", blockIdx.x, local_wid, mutex_this_block[local_wid]);
 	}
+
+
+template <typename MemoryManagerType>
+__global__ void allocate_memory(MemoryManagerType *mm, CallStack *dev_callstack)
+{
+    if(LANEID == 0)
+    {
+        dev_callstack[GLWARPID].slot_storage.allocate();
+    }
+    __syncwarp();
+}
+
 }
