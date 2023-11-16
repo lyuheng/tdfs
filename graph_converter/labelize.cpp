@@ -47,7 +47,7 @@ void convert(std::string prefix) {
   read_file(prefix + ".vertex.bin", vertices, n_vertices+1);
   auto labels = MemoryMappedFile<uint32_t>::Write(prefix + ".label.bin", n_vertices);
   for(int i=0;i<n_vertices;++i){
-    labels[i]=std::rand()%10;
+    labels[i]=std::rand()%4;
   }
     
 }

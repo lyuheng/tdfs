@@ -1,29 +1,29 @@
 DEBUG = 
 
-OPTIONS = -arch=sm_80 -gencode=arch=compute_80,code=sm_80 -Xptxas -v -maxrregcount 64 
-GPU_MATCH = src/gpu_match.cu
+OPTIONS = -arch=sm_80 -gencode=arch=compute_80,code=sm_80 -Xptxas -v -maxrregcount 64 -Lbliss -lbliss
+GPU_MATCH = src/gpu_match.cu 
 
 define compile_cu_test
 	nvcc -std=c++17 $(DEBUG) $(OPTIONS) $(1) cu_test.cu -o $(2)
 endef
 
 define compile_gpu_match
-	nvcc -std=c++17 $(DEBUG) $(OPTIONS) -dc -I. $(1) -o $(2)
+	nvcc -std=c++17 $(DEBUG) $(OPTIONS) -dc -I. $(1) -o $(2) -DLABELED=$(3)
 endef
 
-define edit_config
-	sed -i "/#include \"config_for_ae/c\#include \"config_for_ae/$(1)\" " src/config.h
-endef
 
 .PHONY:all
-all:bin/table_vertex_ulb.exe bin/table_edge_ulb.exe bin/table_edge_lb.exe bin/fig_naive.exe bin/fig_local.exe bin/fig_local_global.exe  bin/fig_local_global_unroll.exe 
+all:bin/lb.out bin/lb.out
 
-bin/%.exe:bin/%.o;
+bin/%.out: bin/%.o;
 	$(call compile_cu_test,$<,$@)
 bin/%.o:
-	$(call edit_config,$(patsubst bin/%.o,%.h,$@))
-	$(call compile_gpu_match,src/gpu_match.cu,$@)
+	$(MKDIR_P) $(dir $@)
+	$(call compile_gpu_match,src/gpu_match.cu, bin/ulb.o, false)
+	$(call compile_gpu_match,src/gpu_match.cu, bin/lb.o, true)
 
 .PHONY:clean
 clean:
-	rm -f bin/*.o bin/*.exe
+	rm -f bin/*.o bin/*.out
+	
+MKDIR_P = mkdir -p

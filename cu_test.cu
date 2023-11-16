@@ -5,17 +5,31 @@
 using namespace std;
 using namespace STMatch;
 
+#define TIMEOUT_QUEUE_CAP 1'000'000
+
 int main(int argc, char* argv[]) {
 
   cudaSetDevice(0);
 
   STMatch::GraphPreprocessor g(argv[1]);
   STMatch::PatternPreprocessor p(argv[2]);
+  g.build_src_vtx(p);
+
+
+  std::cout << "conditions: " << std::endl;
+  for (int i = 0; i < p.order_.size(); i++) 
+  {
+      std::cout << i << ": ";
+      for (int j = 0; j < p.order_[i].size(); j++)
+          std::cout << GetCondOperatorString(p.order_[i][j].first) << "(" << p.order_[i][j].second << "), ";
+      std::cout << std::endl;
+  }
 
   // copy graph and pattern to GPU global memory
   Graph* gpu_graph = g.to_gpu();
   Pattern* gpu_pattern = p.to_gpu();
   JobQueue* gpu_queue = JobQueuePreprocessor(g.g, p).to_gpu();
+  // JobQueue* gpu_queue = nullptr;
   CallStack* gpu_callstack;
 
   // allocate the callstack for all warps in global memory
@@ -55,20 +69,28 @@ int main(int argc, char* argv[]) {
   cudaMalloc(&stk_valid, sizeof(bool) * GRID_DIM);
   cudaMemset(stk_valid, 0, sizeof(bool) * GRID_DIM);
 
+  int* gpu_timeout_queue_space;
+  cudaMalloc(&gpu_timeout_queue_space, sizeof(int) * TIMEOUT_QUEUE_CAP * (STOP_LEVEL + 1));
+  Queue* gpu_timeout_queue;
+  cudaMallocManaged(&gpu_timeout_queue, sizeof(Queue));
+  gpu_timeout_queue->queue_ = gpu_timeout_queue_space;
+  gpu_timeout_queue->size_ = TIMEOUT_QUEUE_CAP * (STOP_LEVEL + 1);
+  gpu_timeout_queue->resetQueue();
+  
+  // timer starts here
   cudaEvent_t start, stop;
   cudaEventCreate(&start);
   cudaEventCreate(&stop);
-
   cudaEventRecord(start);
 
   //cout << "shared memory usage: " << sizeof(Graph) << " " << sizeof(Pattern) << " " << sizeof(JobQueue) << " " << sizeof(CallStack) * NWARPS_PER_BLOCK << " " << NWARPS_PER_BLOCK * 33 * sizeof(int) << " Bytes" << endl;
 
   _parallel_match << <GRID_DIM, BLOCK_DIM >> > (gpu_graph, gpu_pattern, gpu_callstack, gpu_queue, gpu_res, idle_warps, 
-                                              idle_warps_count, global_mutex);
+                                              idle_warps_count, global_mutex, gpu_timeout_queue);
 
 
   cudaEventRecord(stop);
-
+  
   cudaEventSynchronize(stop);
 
   float milliseconds = 0;

@@ -3,6 +3,11 @@
 
 #define UNROLL_SIZE(l) (l > 0 ? UNROLL : 1)
 
+#define LANEID (threadIdx.x % WARP_SIZE)
+#define PEAK_CLK (float)1410000 // A100
+#define ELAPSED_TIME(start) (clock() - start)/PEAK_CLK // in ms
+#define TIMEOUT 10 // timeout
+
 namespace STMatch
 {
 	struct StealingArgs
@@ -12,6 +17,7 @@ namespace STMatch
 		int *global_mutex;
 		int *local_mutex;
 		CallStack *global_callstack;
+		Queue *queue;
 	};
 
 	__forceinline__ __device__ void lock(int *mutex)
@@ -24,114 +30,54 @@ namespace STMatch
 	{
 		atomicExch((int *)mutex, 0);
 	}
-	/*
+	
+	// target_stk is the warp being stolen
 	__device__ bool trans_layer(CallStack &_target_stk, CallStack &_cur_stk, Pattern *_pat, int _k, int ratio = 2)
 	{
 		if (_target_stk.level <= _k)
 			return false;
 
-		int num_left_task = _target_stk.slot_size[_pat->rowptr[_k]][_target_stk.uiter[_k]] -
-							(_target_stk.iter[_k] + _target_stk.uiter[_k + 1] + 1);
+		int num_left_task = _target_stk.slot_size[_k] - (_target_stk.iter[_k] + 1);
 		if (num_left_task <= 0)
 			return false;
 
-		int stealed_start_idx_in_target = _target_stk.iter[_k] + _target_stk.uiter[_k + 1] + 1 + num_left_task / ratio;
+		int stealed_start_idx_in_target = _target_stk.iter[_k] + 1 + num_left_task / ratio;
 
-		_cur_stk.slot_storage[_pat->rowptr[0]][_target_stk.uiter[0]][_target_stk.iter[0] + _target_stk.uiter[1]] = _target_stk.slot_storage[_pat->rowptr[0]][_target_stk.uiter[0]][_target_stk.iter[0] + _target_stk.uiter[1]];
-		_cur_stk.slot_storage[_pat->rowptr[0]][_target_stk.uiter[0]][_target_stk.iter[0] + _target_stk.uiter[1] + JOB_CHUNK_SIZE] = _target_stk.slot_storage[_pat->rowptr[0]][_target_stk.uiter[0]][_target_stk.iter[0] + _target_stk.uiter[1] + JOB_CHUNK_SIZE];
 
+		// lvl 0 to _k - 1 (inclusive)
+		_cur_stk.slot_storage[0][_target_stk.iter[0]] = _target_stk.slot_storage[0][_target_stk.iter[0]];
+		_cur_stk.slot_storage[0][_target_stk.iter[0] + JOB_CHUNK_SIZE] = _target_stk.slot_storage[0][_target_stk.iter[0] + JOB_CHUNK_SIZE];
 		for (int i = 1; i < _k; i++)
 		{
-			_cur_stk.slot_storage[_pat->rowptr[i]][_target_stk.uiter[i]][_target_stk.iter[i] + _target_stk.uiter[i + 1]] = _target_stk.slot_storage[_pat->rowptr[i]][_target_stk.uiter[i]][_target_stk.iter[i] + _target_stk.uiter[i + 1]];
+			_cur_stk.slot_storage[i][_target_stk.iter[i]] = _target_stk.slot_storage[i][_target_stk.iter[i]];
 		}
 
-		for (int r = _pat->rowptr[_k]; r < _pat->rowptr[_k + 1]; r++)
+		// lvl _k (inclusive)
+		int loop_end = _k == 0 ? JOB_CHUNK_SIZE * 2 : _target_stk.slot_size[_k];
+		for (int t = 0; t < loop_end; t++)
 		{
-			for (int u = 0; u < UNROLL_SIZE(_k); u++)
-			{
-				int loop_end = _k == 0 ? JOB_CHUNK_SIZE * 2 : _target_stk.slot_size[r][u];
-				for (int t = 0; t < loop_end; t++)
-				{
-					_cur_stk.slot_storage[r][u][t] = _target_stk.slot_storage[r][u][t];
-				}
-			}
+			_cur_stk.slot_storage[_k][t] = _target_stk.slot_storage[_k][t];
 		}
 
 		for (int l = 0; l < _k; l++)
 		{
 			_cur_stk.iter[l] = _target_stk.iter[l];
-			_cur_stk.uiter[l] = _target_stk.uiter[l];
-			for (int s = _pat->rowptr[l]; s < _pat->rowptr[l + 1]; s++)
-			{
-				if (s > _pat->rowptr[l])
-				{
-					for (int u = 0; u < UNROLL; u++)
-					{
-						_cur_stk.slot_size[s][u] = _target_stk.slot_size[s][u];
-					}
-				}
-				else
-				{
-					for (int u = 0; u < UNROLL_SIZE(l); u++)
-					{
-						if (u == _cur_stk.uiter[l])
-							_cur_stk.slot_size[_pat->rowptr[l]][u] = _target_stk.iter[l] + 1;
-						else
-							_cur_stk.slot_size[_pat->rowptr[l]][u] = 0;
-					}
-				}
-			}
+			_cur_stk.slot_size[l] = _target_stk.iter[l] + 1;
 		}
 
-		// copy
-		for (int i = stealed_start_idx_in_target - _target_stk.iter[_k]; i < UNROLL_SIZE(_k + 1); i++)
-		{
-			_target_stk.slot_size[_pat->rowptr[_k + 1]][i] = 0;
-		}
-
-		for (int s = _pat->rowptr[_k]; s < _pat->rowptr[_k + 1]; s++)
-		{
-			if (s == _pat->rowptr[_k])
-			{
-				for (int u = 0; u < UNROLL_SIZE(_k); u++)
-				{
-					if (u == _target_stk.uiter[_k])
-						_cur_stk.slot_size[s][u] = _target_stk.slot_size[s][u];
-					else
-						_cur_stk.slot_size[s][u] = 0;
-				}
-			}
-			else
-			{
-				for (int u = 0; u < UNROLL_SIZE(_k); u++)
-				{
-					_cur_stk.slot_size[s][u] = _target_stk.slot_size[s][u];
-				}
-			}
-		}
-
-		_cur_stk.uiter[_k] = _target_stk.uiter[_k];
+		_cur_stk.slot_size[_k] = _target_stk.slot_size[_k];
 		_cur_stk.iter[_k] = stealed_start_idx_in_target;
-		_target_stk.slot_size[_pat->rowptr[_k]][_target_stk.uiter[_k]] = stealed_start_idx_in_target;
+		_target_stk.slot_size[_k] = stealed_start_idx_in_target;
+
 		// copy
 		for (int l = _k + 1; l < _pat->nnodes - 1; l++)
 		{
 			_cur_stk.iter[l] = 0;
-			_cur_stk.uiter[l] = 0;
-			for (int s = _pat->rowptr[l]; s < _pat->rowptr[l + 1]; s++)
-			{
-				for (int u = 0; u < UNROLL_SIZE(l); u++)
-				{
-					_cur_stk.slot_size[s][u] = 0;
-				}
-			}
+			_cur_stk.slot_size[l] = 0;
 		}
 		_cur_stk.iter[_pat->nnodes - 1] = 0;
-		_cur_stk.uiter[_pat->nnodes - 1] = 0;
-		for (int u = 0; u < UNROLL_SIZE(_pat->nnodes - 1); u++)
-		{
-			_cur_stk.slot_size[_pat->rowptr[_pat->nnodes - 1]][u] = 0;
-		}
+		_cur_stk.slot_size[_pat->nnodes - 1] = 0;
+	
 		_cur_stk.level = _k + 1;
 		return true;
 	}
@@ -147,13 +93,11 @@ namespace STMatch
 		{
 			for (int i = 0; i < NWARPS_PER_BLOCK; i++)
 			{
-
 				if (i == threadIdx.x / WARP_SIZE)
 					continue;
 				lock(&(_stealing_args->local_mutex[i]));
 
-				int left_task = _all_stk[i].slot_size[pat->rowptr[level]][_all_stk[i].uiter[level]] -
-								(_all_stk[i].iter[level] + _all_stk[i].uiter[level + 1] + 1);
+				int left_task = _all_stk[i].slot_size[level] - (_all_stk[i].iter[level] + 1);
 				if (left_task > max_left_task)
 				{
 					max_left_task = left_task;
@@ -179,7 +123,6 @@ namespace STMatch
 		}
 		return false;
 	}
-	*/
 
 	__forceinline__ __device__ graph_node_t path(CallStack *stk, Pattern *pat, int level)
 	{
@@ -194,7 +137,7 @@ namespace STMatch
 	__forceinline__ __device__ graph_node_t *path_address(CallStack *stk, Pattern *pat, int level)
 	{
 		if (level > 0)
-			return &(stk->slot_storage[level][stk->iter[level]);
+			return &(stk->slot_storage[level][stk->iter[level]]);
 		else
 		{
 			return &(stk->slot_storage[0][stk->iter[0] + (level + 1) * JOB_CHUNK_SIZE]); // -1 or 0
@@ -314,36 +257,79 @@ namespace STMatch
 		return index;
 	}
 
-	__forceinline__ __device__ void compute_intersection(Arg_t *arg, CallStack *stk)
+	__forceinline__ __device__ void compute_intersection(Arg_t *arg, CallStack *stk, bool last_round, bool check_validity)
 	{
 		int res_length = 0;
-		bool pred;
 		int actual_lvl = arg->level + 1;
-		for (int i = threadIdx.x % WARP_SIZE; i < arg->set2; i += WARP_SIZE)
+		bool pred;
+		int target;
+		int cur_label = arg->pat->vertex_labels[actual_lvl];
+
+		for (int i = 0; i < arg->set2_size; i += WARP_SIZE)
 		{
-			pred = true;
-			int target = arg->set2[i];
-			for (int k = 0; k < arg->pat->condition_cnt[actual_lvl]; ++k)
+			pred = false;
+			int il = i + LANEID;
+			if (il < arg->set2_size)
 			{
-				int cond = pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k];
-                int cond_lvl = pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k + 1];
-                int cond_vertex_M = path(stk, pat, cond_lvl - 1);
-				if (cond == CondOperator::NON_EQUAL)
+				pred = true;
+				target = arg->set2[il];
+
+				if (check_validity)
 				{
-					if (cond_vertex_M == target)
+					if (!LABELED)
 					{
-						pred = false;
-						break;
+						// if unlabeled, check automorphism
+						for (int k = 0; k < arg->pat->condition_cnt[actual_lvl]; ++k)
+						{
+							int cond = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k];
+							int cond_lvl = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k + 1];
+							int cond_vertex_M = path(stk, arg->pat, cond_lvl - 1);
+							if (cond == CondOperator::LESS_THAN) {
+								if (cond_vertex_M <= target) {
+									pred = false;
+									break;
+								}
+							}
+							else if (cond == CondOperator::LARGER_THAN) {
+								if (cond_vertex_M >= target) {
+									pred = false;
+									break;
+								}
+							}
+							else if (cond == CondOperator::NON_EQUAL) {
+								if (cond_vertex_M == target) {
+									pred = false;
+									break;
+								}
+							}
+						}
+					}
+					else
+					{
+						// if LABELED, check label
+						if (arg->g->vertex_label[target] != cur_label)
+						{
+							pred = false;
+						}
+						// STMatch does no check 
+						if (pred)
+						{
+							for (int k = -1; k < arg->level; ++k)
+							{
+								int cond_vertex_M = path(stk, arg->pat, k);
+								if (cond_vertex_M == target) {
+									pred = false;
+									break;
+								}
+							}
+						}
 					}
 				}
-			}
-			if (pred)
-			{
-				pred = bsearch_exist(arg->set1, arg->set1_size, target);
+				if (pred) pred = bsearch_exist(arg->set1, arg->set1_size, target);
 			}
 			int loc = scanIndex(pred) + res_length;
-			if (arg->level < arg->pat->nnodes - 2 && pred) 
-				arg->res[loc] = arg->set2[i];
+			if ((arg->level < arg->pat->nnodes - 2 && pred) || ((arg->level == arg->pat->nnodes - 2) && !last_round && pred))
+				arg->res[loc] = target;
 			if (threadIdx.x % WARP_SIZE == 31) // last lane's loc+pred is number of items found in this scan
 				res_length = loc + pred;
 			res_length = __shfl_sync(0xFFFFFFFF, res_length, 31);
@@ -351,26 +337,239 @@ namespace STMatch
 		*arg->res_size = res_length;
 	}
 
-	__forceinline__ __device__ void arr_copy(int* dst, int* src, int len)
+	__forceinline__ __device__ void arr_copy(Arg_t *arg, CallStack *stk)
 	{
-		for (int i = threadIdx.x % WARP_SIZE; i < len; i += WARP_SIZE)
+		int res_length = 0;
+		int actual_lvl = arg->level + 1;
+		bool pred;
+		int target;
+		int cur_label = arg->pat->vertex_labels[actual_lvl];
+		int BN = arg->pat->backward_neighbors[actual_lvl][0];
+
+		graph_node_t t = path(stk, arg->pat, BN - 1);
+		int num_neighbor = (graph_node_t)(arg->g->rowptr[t + 1] - arg->g->rowptr[t]);
+		int *neighbors = &(arg->g->colidx[arg->g->rowptr[t]]);
+
+		for (int i = 0; i < num_neighbor; i += WARP_SIZE)
 		{
-			dst[i] = src[i];
+			// if unlabeled, check automorphism
+			pred = false;
+			int il = i + LANEID;
+			if (il < num_neighbor)
+			{
+				pred = true;
+				target = neighbors[il];
+				if (!LABELED) {
+					for (int k = 0; k < arg->pat->condition_cnt[actual_lvl]; ++k)
+					{
+						int cond = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k];
+						int cond_lvl = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k + 1];
+						int cond_vertex_M = path(stk, arg->pat, cond_lvl - 1);
+						if (cond == CondOperator::LESS_THAN) {
+							if (cond_vertex_M <= target) {
+								pred = false;
+								break;
+							}
+						}
+						else if (cond == CondOperator::LARGER_THAN) {
+							if (cond_vertex_M >= target) {
+								pred = false;
+								break;
+							}
+						}
+						else if (cond == CondOperator::NON_EQUAL) {
+							if (cond_vertex_M == target) {
+								pred = false;
+								break;
+							}
+						}
+					}
+				} 
+				else
+				{
+					if (arg->g->vertex_label[target] != cur_label)
+					{
+						pred = false;
+					}
+					// STMatch does no check 
+					if (pred)
+					{
+						for (int k = -1; k < arg->level; ++k)
+						{
+							int cond_vertex_M = path(stk, arg->pat, k);
+							if (cond_vertex_M == target) {
+								pred = false;
+								break;
+							}
+						}
+					}
+				}
+			}
+			int loc = scanIndex(pred) + res_length;
+			if (arg->level < arg->pat->nnodes - 2 && pred)
+				stk->slot_storage[arg->level][loc] = target;
+			if (threadIdx.x % WARP_SIZE == 31) // last lane's loc+pred is number of items found in this scan
+				res_length = loc + pred;
+			res_length = __shfl_sync(0xFFFFFFFF, res_length, 31);
+		}
+		stk->slot_size[arg->level] = res_length;
+	}
+
+	__forceinline__ __device__ void arr_copy_shared(Arg_t *arg, CallStack *stk)
+	{
+		int res_length = 0;
+		int actual_lvl = arg->level + 1;
+		bool pred;
+		int target;
+		int cur_label = arg->pat->vertex_labels[actual_lvl];
+		
+		graph_node_t dep = arg->pat->shared_lvl[actual_lvl];
+		assert(dep != -1);
+		int num_neighbor = stk->slot_size[dep -1];
+		int *neighbors = stk->slot_storage[dep - 1];
+
+		for (int i = 0; i < num_neighbor; i += WARP_SIZE)
+		{
+			// if unlabeled, check automorphism
+			pred = false;
+			int il = i + LANEID;
+			if (il < num_neighbor)
+			{
+				pred = true;
+				target = neighbors[il];
+				if (!LABELED) {
+					for (int k = 0; k < arg->pat->condition_cnt[actual_lvl]; ++k)
+					{
+						int cond = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k];
+						int cond_lvl = arg->pat->condition_order[actual_lvl * PAT_SIZE * 2 + 2 * k + 1];
+						int cond_vertex_M = path(stk, arg->pat, cond_lvl - 1);
+						if (cond == CondOperator::LESS_THAN) {
+							if (cond_vertex_M <= target) {
+								pred = false;
+								break;
+							}
+						}
+						else if (cond == CondOperator::LARGER_THAN) {
+							if (cond_vertex_M >= target) {
+								pred = false;
+								break;
+							}
+						}
+						else if (cond == CondOperator::NON_EQUAL) {
+							if (cond_vertex_M == target) {
+								pred = false;
+								break;
+							}
+						}
+					}
+				} 
+				else
+				{
+					if (arg->g->vertex_label[target] != cur_label)
+					{
+						pred = false;
+					}
+					// STMatch does no check 
+					if (pred)
+					{
+						for (int k = -1; k < arg->level; ++k)
+						{
+							int cond_vertex_M = path(stk, arg->pat, k);
+							if (cond_vertex_M == target) {
+								pred = false;
+								break;
+							}
+						}
+					}
+				}
+			}
+			int loc = scanIndex(pred) + res_length;
+			if (arg->level < arg->pat->nnodes - 2 && pred)
+				stk->slot_storage[arg->level][loc] = target;
+			if (threadIdx.x % WARP_SIZE == 31) // last lane's loc+pred is number of items found in this scan
+				res_length = loc + pred;
+			res_length = __shfl_sync(0xFFFFFFFF, res_length, 31);
+		}
+		stk->slot_size[arg->level] = res_length;
+	}
+
+	__forceinline__ __device__ void get_job(Graph *g, Pattern *pat, CallStack *stk, JobQueue *q)
+	// __forceinline__ __device__ void get_job(JobQueue *q, graph_node_t &cur_pos, graph_node_t &njobs)
+	{
+		// lock(&(q->mutex));
+		// cur_pos = q->cur;
+		// q->cur += JOB_CHUNK_SIZE;
+		// if (q->cur > q->length)
+		// 	q->cur = q->length;
+		// njobs = q->cur - cur_pos;
+		// unlock(&(q->mutex));
+
+		// cur_pos = atomicAdd(&q->cur, JOB_CHUNK_SIZE);
+		// if (cur_pos < q->length) {
+		// 	int tmp = cur_pos + JOB_CHUNK_SIZE;
+		// 	if (tmp > q->length) 
+		// 		tmp = q->length;
+		// 	njobs = tmp - cur_pos;
+		// }
+        // else
+        // {
+	    //     atomicAdd(&q->cur, -JOB_CHUNK_SIZE);
+        //     njobs = 0;
+        // }
+
+		
+		int cnt;
+		while (true)
+		{
+			unsigned long long cur_pos = atomicAdd(&q->cur, JOB_CHUNK_SIZE);
+			cnt = 0;
+			if (cur_pos < g->nedges)
+			{
+				long end = cur_pos + JOB_CHUNK_SIZE;
+				if (end > g->nedges)
+					end = g->nedges;
+				for (long i = cur_pos; i < end; ++i)
+				{
+					graph_node_t c = g->colidx[i];
+					graph_node_t r = g->src_vtx[i];
+					
+					if ((!LABELED && pat->partial_ori[0][0] == 1 && r < c) || LABELED || pat->partial_ori[0][0] != 1)
+          			{
+            			if (!LABELED || (g->vertex_label[r] == pat->vertex_labels[0] && g->vertex_label[c] == pat->vertex_labels[1]) )
+						{
+							if (g->rowptr[r + 1] - g->rowptr[r] >= pat->degree[0] && g->rowptr[c + 1] - g->rowptr[c] >= pat->degree[1]) {
+								bool valid = false;
+								for (graph_edge_t d = g->rowptr[c]; d < g->rowptr[c + 1]; d++) {
+									graph_node_t v = g->colidx[d];
+									if (g->rowptr[v + 1] - g->rowptr[v] >= pat->degree[2]) {
+										valid = true;
+										break;
+									}
+								}
+								if (valid)
+								{
+									stk->slot_storage[0][cnt] = r;
+									stk->slot_storage[0][JOB_CHUNK_SIZE + cnt] = c;
+									cnt++;
+								}
+							}
+						}
+					}
+				}
+				stk->slot_size[0] = cnt;
+
+				if (cnt > 0)
+					break;
+			} else {
+				atomicAdd(&q->cur, -JOB_CHUNK_SIZE);
+				stk->slot_size[0] = 0;
+				break;
+			}
 		}
 	}
 
-	__forceinline__ __device__ void get_job(JobQueue *q, graph_node_t &cur_pos, graph_node_t &njobs)
-	{
-		lock(&(q->mutex));
-		cur_pos = q->cur;
-		q->cur += JOB_CHUNK_SIZE;
-		if (q->cur > q->length)
-			q->cur = q->length;
-		njobs = q->cur - cur_pos;
-		unlock(&(q->mutex));
-	}
-
-	__device__ void extend(Graph *g, Pattern *pat, CallStack *stk, JobQueue *q, pattern_node_t level)
+	__device__ void extend(Graph *g, Pattern *pat, CallStack *stk, JobQueue *q, pattern_node_t level, long &start_clk, 
+							StealingArgs *_stealing_args)
 	{
 
 		__shared__ Arg_t arg[NWARPS_PER_BLOCK];
@@ -379,78 +578,207 @@ namespace STMatch
 
 		if (level == 0)
 		{
-			graph_node_t cur_job, njobs;
-
 			// TODO: change to warp
+
+			graph_node_t cur_job, njobs;
+			stk->stealed_task = false;
 			
 			if (threadIdx.x % WARP_SIZE == 0)
 			{
-				get_job(q, cur_job, njobs);
+				int x, y, z;
+				bool ret = _stealing_args->queue->dequeue(x, y, z);
+				if (ret) {
+					stk->slot_storage[0][0] = x;
+					stk->slot_storage[0][JOB_CHUNK_SIZE] = y;
+					stk->slot_size[0] = 1;
 
-				for (size_t i = 0; i < njobs; i++)
-				{
-					for (int j = 0; j < 2; j++)
+					if (z != DeletionMarker<int>::val - 1)
 					{
-						stk->slot_storage[0][k][i + JOB_CHUNK_SIZE * j] = (q->q[cur_job + i].nodes)[j];
+						level = 1;
+						stk->slot_storage[1][0] = z;
+						stk->slot_size[1] = 1;
+
+						stk->stealed_task = true;
 					}
 				}
-				stk->slot_size[0][k] = njobs;
+				else
+				{
+					get_job(g, pat, stk, q);
+
+					// get_job(q, cur_job, njobs);
+
+					// for (size_t i = 0; i < njobs; i++)
+                    // {
+                    //     for (int j = 0; j < 2; j++)
+                    //     {
+                    //         stk->slot_storage[0][i + JOB_CHUNK_SIZE * j] = (q->q[cur_job + i].nodes)[j]; // matches of 2 nodes are saved at level 0
+                    //     }
+                    // }
+                    // stk->slot_size[0] = njobs;
+				}
 			}
 			__syncwarp();
+			start_clk = clock64();
 		}
 		else
 		{
 			arg[wid].g = g;
 			arg[wid].level = level;
 			arg[wid].pat = pat;
-			int actual_lvl = level + 1;
-			
-			if (pat->num_BN[actual_lvl] == 0)
-				assert(false);
-			else
-			{
-				int BN = pat->backward_neighbors[actual_lvl][0];
-				graph_node_t t = path(stk, pat, BN - 1);
-				int t_min = t;
-				int min_neighbor = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
 
-				for (int i = 1; i < pat->num_BN[actual_lvl]; ++i)
+			int actual_lvl = level + 1;
+
+			bool last_round;
+			
+			int dep = pat->shared_lvl[actual_lvl];
+
+			if (dep == -1 ||
+				(dep == 2 && stk->stealed_task))
+			{
+				if (pat->num_BN[actual_lvl] == 0)
+					assert(false);
+				else if (pat->num_BN[actual_lvl] == 1)
+				{
+					arr_copy(&arg[wid], stk);
+				}
+				else
 				{
 					int BN = pat->backward_neighbors[actual_lvl][0];
-					t = path(stk, pat, BN - 1);
-					int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
-					if (neighbors_cnt < min_neighbor)
+					graph_node_t t = path(stk, pat, BN - 1);
+					int i_min = 0;
+					int t_min = t;
+					int min_neighbor = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
+
+					for (int i = 1; i < pat->num_BN[actual_lvl]; ++i)
 					{
-						t_min = t;
-						min_neighbor = neighbors_cnt;
+						BN = pat->backward_neighbors[actual_lvl][i];
+						t = path(stk, pat, BN - 1);
+						int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
+						if (neighbor_cnt < min_neighbor)
+						{
+							i_min = i;
+							t_min = t;
+							min_neighbor = neighbor_cnt;
+						}
+					}
+					// arr_copy(stk->slot_storage[level], &g->colidx[g->rowptr[t_min]], min_neighbor);
+					// stk->slot_size[level] = min_neighbor;
+
+					if (i_min != 0)
+					{
+						BN = pat->backward_neighbors[actual_lvl][0];
+						t = path(stk, pat, BN - 1);
+						int* neighbor = &g->colidx[g->rowptr[t]];
+						int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
+						arg[wid].set1 = neighbor;
+						arg[wid].set1_size = neighbor_cnt;
+						arg[wid].set2 = &g->colidx[g->rowptr[t_min]];
+						arg[wid].set2_size = min_neighbor;
+						arg[wid].res = stk->slot_storage[level];
+						arg[wid].res_size = &(stk->slot_size[level]);
+						last_round = (pat->num_BN[actual_lvl] == 2) ? true : false;
+						compute_intersection(&arg[wid], stk, last_round, true);
+
+						for (int i = 1; i < pat->num_BN[actual_lvl]; ++i)
+						{
+							if (i == i_min) continue;
+							last_round = (i == pat->num_BN[actual_lvl] - 1) || (i == pat->num_BN[actual_lvl] - 2 && i_min == pat->num_BN[actual_lvl] - 1);
+							BN = pat->backward_neighbors[actual_lvl][i];
+							t = path(stk, pat, BN - 1);
+							int* neighbor = &g->colidx[g->rowptr[t]];
+							int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
+							arg[wid].set1 = neighbor;
+							arg[wid].set1_size = neighbor_cnt;
+							arg[wid].set2 = stk->slot_storage[level];
+							arg[wid].set2_size = stk->slot_size[level];
+							arg[wid].res = stk->slot_storage[level];
+							arg[wid].res_size = &(stk->slot_size[level]);
+							compute_intersection(&arg[wid], stk, last_round, false);
+						}
+					}
+					else // i_min = 0 
+					{
+						BN = pat->backward_neighbors[actual_lvl][1];
+						t = path(stk, pat, BN - 1);
+						int* neighbor = &g->colidx[g->rowptr[t]];
+						int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
+						arg[wid].set1 = neighbor;
+						arg[wid].set1_size = neighbor_cnt;
+						arg[wid].set2 = &g->colidx[g->rowptr[t_min]];
+						arg[wid].set2_size = min_neighbor;
+						arg[wid].res = stk->slot_storage[level];
+						arg[wid].res_size = &(stk->slot_size[level]);
+						last_round = (pat->num_BN[actual_lvl] == 2) ? true : false;
+						compute_intersection(&arg[wid], stk, last_round, true);
+
+						for (int i = 2; i < pat->num_BN[actual_lvl]; ++i)
+						{
+							if (i == i_min) continue;
+							last_round = (i == pat->num_BN[actual_lvl] - 1) || (i == pat->num_BN[actual_lvl] - 2 && i_min == pat->num_BN[actual_lvl] - 1);
+							BN = pat->backward_neighbors[actual_lvl][i];
+							t = path(stk, pat, BN - 1);
+							int* neighbor = &g->colidx[g->rowptr[t]];
+							int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
+							arg[wid].set1 = neighbor;
+							arg[wid].set1_size = neighbor_cnt;
+							arg[wid].set2 = stk->slot_storage[level];
+							arg[wid].set2_size = stk->slot_size[level];
+							arg[wid].res = stk->slot_storage[level];
+							arg[wid].res_size = &(stk->slot_size[level]);
+							compute_intersection(&arg[wid], stk, last_round, false);
+						}
 					}
 				}
-				arr_copy(stk->slot_storage[level], &g->colidx[g->rowptr[t_min]], min_neighbor);
-
-				for (int i = 0; i < pat->num_BN[actual_lvl]; ++i)
+			} 
+			else 
+			{
+				if (pat->num_BN_sh[actual_lvl] == 0)
 				{
-					if (i == t_min) continue;
+					arr_copy_shared(&arg[wid], stk);
+				}
+				else 
+				{
+					int BN = pat->backward_neighbors_sh[actual_lvl][0];
+					graph_node_t t = path(stk, pat, BN - 1);
+					int i_min = 0;
+					int t_min = t;
+					int min_neighbor = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
 
-					int BN = pat->backward_neighbors[actual_lvl][i];
-					t = path(stk, pat, BN - 1);
-					int neighbor = &g->colidx[g->rowptr[t]];
-					int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
-
-					arg[wid].set1 = neighbor;
-					arg[wid].set1_size = neighbor_cnt;
-					arg[wid].set2 = stk->slot_storage[level];
-					arg[wid].set2_size = stk->slot_size[level];
+					int dep = pat->shared_lvl[actual_lvl];
+					int* neighbor = stk->slot_storage[dep - 1];
+					int neighbor_cnt = stk->slot_size[dep - 1];
+					arg[wid].set1 = &g->colidx[g->rowptr[t_min]];
+					arg[wid].set1_size = min_neighbor;
+					arg[wid].set2 = neighbor;
+					arg[wid].set2_size = neighbor_cnt;
 					arg[wid].res = stk->slot_storage[level];
 					arg[wid].res_size = &(stk->slot_size[level]);
+					last_round = (pat->num_BN_sh[actual_lvl] == 1) ? true : false;
+					compute_intersection(&arg[wid], stk, last_round, true);
 
-					compute_intersection(&arg[wid], stk);
-				}	
+					for (int i = 1; i < pat->num_BN_sh[actual_lvl]; ++i)
+					{
+						if (i == i_min) continue;
+						last_round = (i == pat->num_BN_sh[actual_lvl] - 1) || (i == pat->num_BN_sh[actual_lvl] - 2 && i_min == pat->num_BN_sh[actual_lvl] - 1);
+						BN = pat->backward_neighbors_sh[actual_lvl][i];
+						t = path(stk, pat, BN - 1);
+						int* neighbor = &g->colidx[g->rowptr[t]];
+						int neighbor_cnt = (graph_node_t)(g->rowptr[t + 1] - g->rowptr[t]);
+						arg[wid].set1 = neighbor;
+						arg[wid].set1_size = neighbor_cnt;
+						arg[wid].set2 = stk->slot_storage[level];
+						arg[wid].set2_size = stk->slot_size[level];
+						arg[wid].res = stk->slot_storage[level];
+						arg[wid].res_size = &(stk->slot_size[level]);
+						compute_intersection(&arg[wid], stk, last_round, false);
+					}
+				}
 			}
 		}
 		stk->iter[level] = 0;
 	}
 
-	/*
+	
 	__forceinline__ __device__ void respond_across_block(int level, CallStack *stk, Pattern *pat, StealingArgs *_stealing_args)
 	{
 		if (level > 0 && level <= DETECT_LEVEL)
@@ -461,7 +789,7 @@ namespace STMatch
 				int left_task = 0;
 				for (int l = 0; l < level; l++)
 				{
-					left_task = stk->slot_size[pat->rowptr[l]][stk->uiter[l]] - stk->iter[l] - stk->uiter[l + 1] - 1;
+					left_task = stk->slot_size[l] - stk->iter[l] - 1;
 					if (left_task > 0)
 					{
 						at_level = l;
@@ -497,10 +825,10 @@ namespace STMatch
 			__syncwarp();
 		}
 	}
-	*/
+	
 
 	__device__ void match(Graph *g, Pattern *pat,
-						  CallStack *stk, JobQueue *q, size_t *count, StealingArgs *_stealing_args)
+						  CallStack *stk, JobQueue *q, size_t *count, StealingArgs *_stealing_args, long &start_clk)
 	{
 
 		pattern_node_t &level = stk->level;
@@ -515,15 +843,14 @@ namespace STMatch
 
 			if (level < pat->nnodes - 2)
 			{
-
-				// if (STEAL_ACROSS_BLOCK)
+				// if (true)
 				// {
 				// 	respond_across_block(level, stk, pat, _stealing_args);
 				// }
 
 				if (stk->slot_size[level] == 0)
 				{
-					extend(g, pat, stk, q, level);
+					extend(g, pat, stk, q, level, start_clk, _stealing_args);
 					if (level == 0 && stk->slot_size[0] == 0)
 					{
 						// if (threadIdx.x % WARP_SIZE == 0)
@@ -533,15 +860,57 @@ namespace STMatch
 					}
 				}
 
-				if (stk->iter[level] < stk->slot_size[level])
+				int is_timeout;
+				if (LANEID == 0)
+					is_timeout = level < STOP_LEVEL && ELAPSED_TIME(start_clk) > TIMEOUT;
+				is_timeout = __shfl_sync(0xFFFFFFFF, is_timeout, 0);
+
+				if (stk->iter[level] < stk->slot_size[level] && !is_timeout)
+				// if (stk->iter[level] < stk->slot_size[level])
 				{
 					if (threadIdx.x % WARP_SIZE == 0)
 						level++;
 					__syncwarp();
 				}
+				else if (stk->iter[level] < stk->slot_size[level] && is_timeout)
+				{
+					int enqueue_succ;
+					if (LANEID == 0)
+					{
+						for(; stk->iter[level] < stk->slot_size[level]; stk->iter[level]++)
+						{
+							int x, y, z;
+							x = path(stk, pat, -1);
+							y = path(stk, pat, 0);
+							if (level == 1)
+								z = path(stk, pat, 1);
+							else
+								z = DeletionMarker<int>::val - 1;
+							enqueue_succ = _stealing_args->queue->enqueue(x, y, z);
+							if (!enqueue_succ) break;
+						}
+					}
+					enqueue_succ = __shfl_sync(0xFFFFFFFF, enqueue_succ, 0);
+					if (enqueue_succ)
+					{
+						stk->slot_size[level] = 0;
+						stk->iter[level] = 0;
+						if (level > 0)
+						{
+							if (threadIdx.x % WARP_SIZE == 0)
+								level--;
+							if (threadIdx.x % WARP_SIZE == 0)
+								stk->iter[level]++;
+							__syncwarp();
+						}
+					} else { // means queue is full, reset timer, do some work
+						start_clk = clock64();
+					}
+				}
 				else
 				{
 					stk->slot_size[level] = 0;
+					stk->iter[level] = 0;
 					if (level > 0)
 					{
 						if (threadIdx.x % WARP_SIZE == 0)
@@ -549,15 +918,17 @@ namespace STMatch
 						if (threadIdx.x % WARP_SIZE == 0)
 							stk->iter[level]++;
 						__syncwarp();
+
+						if (level == 0)
+							start_clk = clock64();
 					}
 				}
 			}
 			else if (level == pat->nnodes - 2)
 			{
+				extend(g, pat, stk, q, level, start_clk, _stealing_args);
 
-				extend(g, pat, stk, q, level);
-
-				if (threadIdx.x % WARP_SIZE == 0)
+				if (LANEID == 0)
 				{
 					*count += stk->slot_size[level];
 				}
@@ -570,17 +941,20 @@ namespace STMatch
 					stk->iter[level]++;
 				__syncwarp();
 			}
-			//__syncwarp();
+			__syncwarp();
 			// if (threadIdx.x % WARP_SIZE == 0)
 			// 	unlock(&(_stealing_args->local_mutex[threadIdx.x / WARP_SIZE]));
-			__syncwarp();
+			// __syncwarp();
 		}
 	}
 
 	__global__ void _parallel_match(Graph *dev_graph, Pattern *dev_pattern,
 									CallStack *dev_callstack, JobQueue *job_queue, size_t *res,
-									int *idle_warps, int *idle_warps_count, int *global_mutex)
+									int *idle_warps, int *idle_warps_count, int *global_mutex,
+									Queue *queue)
 	{
+		queue->init();
+
 		__shared__ Graph graph;
 		__shared__ Pattern pat;
 		__shared__ CallStack stk[NWARPS_PER_BLOCK];
@@ -594,6 +968,8 @@ namespace STMatch
 		stealing_args.global_mutex = global_mutex;
 		stealing_args.local_mutex = mutex_this_block;
 		stealing_args.global_callstack = dev_callstack;
+
+		stealing_args.queue = queue;
 
 		int global_tid = blockIdx.x * blockDim.x + threadIdx.x;
 		int global_wid = global_tid / WARP_SIZE;
@@ -626,61 +1002,63 @@ namespace STMatch
 
 		while (true)
 		{
-			match(&graph, &pat, &stk[local_wid], job_queue, &count[local_wid], &stealing_args);
+			long start_clk = clock64();
+			match(&graph, &pat, &stk[local_wid], job_queue, &count[local_wid], &stealing_args, start_clk);
 			__syncwarp();
 
 			stealed[local_wid] = false;
 
-			/*
-			if (STEAL_IN_BLOCK)
-			{
-				if (threadIdx.x % WARP_SIZE == 0)
-				{
-					stealed[local_wid] = trans_skt(stk, &stk[local_wid], &pat, &stealing_args);
-				}
-				__syncwarp();
-			}
+			
+			// if (true)
+			// {
+			// 	if (threadIdx.x % WARP_SIZE == 0)
+			// 	{
+			// 		stealed[local_wid] = trans_skt(stk, &stk[local_wid], &pat, &stealing_args);
+			// 	}
+			// 	__syncwarp();
+			// }
 
-			if (STEAL_ACROSS_BLOCK)
-			{
-				if (!stealed[local_wid])
-				{
+			
+			// if (true)
+			// {
+			// 	if (!stealed[local_wid])
+			// 	{
 
-					__syncthreads();
+			// 		__syncthreads();
 
-					if (threadIdx.x % WARP_SIZE == 0)
-					{
+			// 		if (threadIdx.x % WARP_SIZE == 0)
+			// 		{
 
-						atomicAdd(stealing_args.idle_warps_count, 1);
+			// 			atomicAdd(stealing_args.idle_warps_count, 1);
 
-						lock(&(stealing_args.global_mutex[blockIdx.x]));
+			// 			lock(&(stealing_args.global_mutex[blockIdx.x]));
 
-						atomicOr(&stealing_args.idle_warps[blockIdx.x], (1 << local_wid));
+			// 			atomicOr(&stealing_args.idle_warps[blockIdx.x], (1 << local_wid));
 
-						unlock(&(stealing_args.global_mutex[blockIdx.x]));
+			// 			unlock(&(stealing_args.global_mutex[blockIdx.x]));
 
-						while ((atomicAdd(stealing_args.idle_warps_count, 0) < NWARPS_TOTAL) && (atomicAdd(&stealing_args.idle_warps[blockIdx.x], 0) & (1 << local_wid)))
-							;
+			// 			while ((atomicAdd(stealing_args.idle_warps_count, 0) < NWARPS_TOTAL) && (atomicAdd(&stealing_args.idle_warps[blockIdx.x], 0) & (1 << local_wid)))
+			// 				;
 
-						if (atomicAdd(stealing_args.idle_warps_count, 0) < NWARPS_TOTAL)
-						{
+			// 			if (atomicAdd(stealing_args.idle_warps_count, 0) < NWARPS_TOTAL)
+			// 			{
 
-							__threadfence();
-							if (local_wid == 0)
-							{
-								stk[local_wid] = (stealing_args.global_callstack[blockIdx.x * NWARPS_PER_BLOCK]);
-							}
-							stealed[local_wid] = true;
-						}
-						else
-						{
-							stealed[local_wid] = false;
-						}
-					}
-					__syncthreads();
-				}
-			}
-			*/
+			// 				__threadfence();
+			// 				if (local_wid == 0)
+			// 				{
+			// 					stk[local_wid] = (stealing_args.global_callstack[blockIdx.x * NWARPS_PER_BLOCK]);
+			// 				}
+			// 				stealed[local_wid] = true;
+			// 			}
+			// 			else
+			// 			{
+			// 				stealed[local_wid] = false;
+			// 			}
+			// 		}
+			// 		__syncthreads();
+			// 	}
+			// }
+			
 
 			if (!stealed[local_wid])
 			{

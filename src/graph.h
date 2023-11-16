@@ -8,6 +8,7 @@
 #include <iostream>
 #include <cassert>
 #include "config.h"
+#include "pattern.h"
 
 
 namespace STMatch {
@@ -19,6 +20,7 @@ namespace STMatch {
     bitarray32* vertex_label;
     graph_edge_t* rowptr;
     graph_node_t* colidx;
+    graph_node_t* src_vtx;
   } Graph;
 
   struct GraphPreprocessor {
@@ -35,9 +37,11 @@ namespace STMatch {
       cudaMalloc(&gcopy.vertex_label, sizeof(bitarray32) * g.nnodes);
       cudaMalloc(&gcopy.rowptr, sizeof(graph_edge_t) * (g.nnodes + 1));
       cudaMalloc(&gcopy.colidx, sizeof(graph_node_t) * g.nedges);
+      cudaMalloc(&gcopy.src_vtx, sizeof(graph_node_t) * g.nedges);
       cudaMemcpy(gcopy.vertex_label, g.vertex_label, sizeof(bitarray32) * g.nnodes, cudaMemcpyHostToDevice);
       cudaMemcpy(gcopy.rowptr, g.rowptr, sizeof(graph_edge_t) * (g.nnodes + 1), cudaMemcpyHostToDevice);
       cudaMemcpy(gcopy.colidx, g.colidx, sizeof(graph_node_t) * g.nedges, cudaMemcpyHostToDevice);
+      cudaMemcpy(gcopy.src_vtx, g.src_vtx, sizeof(graph_node_t) * g.nedges, cudaMemcpyHostToDevice);
 
       Graph* gpu_g;
       cudaMalloc(&gpu_g, sizeof(Graph));
@@ -84,6 +88,7 @@ namespace STMatch {
       g.vertex_label = new bitarray32[vertex_labels.size()];
       for (int i = 0; i < g.nnodes; i++) {
         g.vertex_label[i] = (1 << vertex_labels[i]);
+        // g.vertex_label[i] = vertex_labels[i];
       }
       // memcpy(g.vertex_label, vertex_labels.data(), sizeof(int) * vertex_labels.size());
 
@@ -152,10 +157,58 @@ namespace STMatch {
         read_subfile(filename + ".label.bin", lb, n_vertices);
       }
       for (int i = 0; i < n_vertices; i++) {
-        g.vertex_label[i] = (1 << lb[i]);
+        // g.vertex_label[i] = (1 << lb[i]);
+        g.vertex_label[i] = lb[i];
       }
       delete[] lb;
+
+
+      int deg_le_2 = 0;
+      for (int i = 0; i < g.nnodes; ++i) {
+        if (g.rowptr[i + 1] - g.rowptr[i] <= 2) 
+          deg_le_2++;
+     }
+     std::cout << "there're " << deg_le_2 << " vertices degree <= 2, percentage: " << (float)deg_le_2/g.nnodes * 100 << "%" << std::endl;
+     int deg_le_3 = 0;
+      for (int i = 0; i < g.nnodes; ++i) {
+        if (g.rowptr[i + 1] - g.rowptr[i] <= 3) 
+          deg_le_3++;
+     }
+     std::cout << "there're " << deg_le_3 << " vertices degree <= 3, percentage: " << (float)deg_le_3/g.nnodes * 100 << "%" << std::endl;
+     int deg_le_4 = 0;
+      for (int i = 0; i < g.nnodes; ++i) {
+        if (g.rowptr[i + 1] - g.rowptr[i] <= 4) 
+          deg_le_4++;
+     }
+     std::cout << "there're " << deg_le_4 << " vertices degree <= 4, percentage: " << (float)deg_le_4/g.nnodes * 100 << "%" << std::endl;
+
+
+      for (int i=0; i < n_vertices; ++i)
+      {
+        for (long j = g.rowptr[i]; j < g.rowptr[i + 1] - 1; ++j)
+        {
+          if (g.colidx[j] == g.colidx[j + 1]) assert(false);
+        }
+      }
     }
 
+    void build_src_vtx(PatternPreprocessor &p)
+    {
+      g.src_vtx = new int[g.nedges];
+
+      for (int r = 0; r < g.nnodes; ++r)
+      {
+        for (graph_edge_t j = g.rowptr[r]; j < g.rowptr[r + 1]; ++j)
+        {
+          // int c = g.colidx[j];
+          // g.src_vtx[j] = -1;
+          // if ((!LABELED && p.partial[0][0] == 1 && r < c) || LABELED || p.partial[0][0] != 1)
+          // {
+          //   if (!LABELED || (g.vertex_label[r] == p.pat.vertex_labels[0] && g.vertex_label[c] == p.pat.vertex_labels[1]) )
+              g.src_vtx[j] = r;
+          // }
+        }
+      }
+    }
   };
 }

@@ -7,13 +7,38 @@
 #include <iostream>
 #include <algorithm>
 #include <vector>
+#include <map>
+#include <string>
 #include <set>
+#include <unordered_set>
 #include <cassert>
+#include <utility>
 #include "config.h"
+#include "../bliss/graph.hh"
 
 namespace STMatch {
 
-enum CondOperator { LESS_THAN, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
+enum CondOperator { LESS_THAN = 0, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
+
+
+inline std::string GetCondOperatorString(const CondOperator& op) {
+  std::string ret = "";
+  switch (op) {
+    case LESS_THAN:
+        ret = "LESS_THAN";
+        break;
+    case LARGER_THAN:
+        ret = "LAGER_THAN";
+        break;
+    case NON_EQUAL:
+        ret = "NON_EQUAL";
+        break;
+    default:
+        break;
+  }
+  return ret;
+}
+   
 
   typedef struct {
 
@@ -24,11 +49,16 @@ enum CondOperator { LESS_THAN, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
     bitarray32 partial[MAX_SLOT_NUM];
     set_op_t set_ops[MAX_SLOT_NUM];
 
-
-    int backward_neighbors[PAT_SIZE * PAT_SIZE];
+    int backward_neighbors[PAT_SIZE][PAT_SIZE];
     int num_BN[PAT_SIZE];
     int condition_order[PAT_SIZE * PAT_SIZE * 2];
     int condition_cnt[PAT_SIZE];
+    int vertex_labels[PAT_SIZE];
+    bitarray32 partial_ori[PAT_SIZE][PAT_SIZE];
+
+    int shared_lvl[PAT_SIZE]; // if no share, -1
+    int backward_neighbors_sh[PAT_SIZE][PAT_SIZE];
+    int num_BN_sh[PAT_SIZE];
   } Pattern;
 
 
@@ -52,8 +82,14 @@ enum CondOperator { LESS_THAN, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
     int length[PAT_SIZE];
     int edge[PAT_SIZE][PAT_SIZE];
 
+    typedef std::pair<CondOperator, int> CondType;
+    typedef std::vector<std::vector<CondType>> AllCondType;
+
+    AllCondType order_;
+
     PatternPreprocessor(std::string filename) {
       readfile(filename);
+      SetConditions(GetConditions(GetBlissGraph())); // set order_
       get_matching_order();
       get_partial_order();
       get_set_ops();
@@ -297,10 +333,15 @@ enum CondOperator { LESS_THAN, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
           }
         }
       }
+      for (int i=0; i<pat.nnodes; ++i) {
+        for (int j=0; j<pat.nnodes; ++j) {
+          pat.partial_ori[i][j] = partial[i][j];
+        }
+      }
       //================== execute condition array ==================
       std::vector<bool> visited(pat.nnodes, false);
-      memset(pat.backward_neighbors, 0, sizeof(int)*PAT_SIZE);
-      memset(pat.num_BN, 0, sizeof(int)*PAT_SIZE);
+      memset(pat.backward_neighbors, 0, sizeof(pat.backward_neighbors));
+      memset(pat.num_BN, 0, sizeof(pat.num_BN));
 
       visited[vertex_order_[0]] = true;
 
@@ -315,22 +356,131 @@ enum CondOperator { LESS_THAN, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
         }
         visited[vertex] = true;
       }
+      std::cout << "# BNs:\n"; 
+      for(int i = 0; i < pat.nnodes; ++i)
+      {
+        for (int j = 0; j < pat.num_BN[i]; ++j)
+        {
+          std::cout << pat.backward_neighbors[i][j] << " ";
+        } 
+        std::cout << "\n";
+      }
+      std::cout << std::endl;
+
+      // ======================= find shared computation ===============
+      int nbr_bits[PAT_SIZE];
+      pat.shared_lvl[0] = -1;
+      pat.shared_lvl[1] = -1;
+      for(int i = 1; i < pat.nnodes; ++i)
+      {
+        nbr_bits[i] = 0;
+        for(int j = 0; j < i; ++j)
+        {
+          if (adj_matrix_[j][i] > 0)
+            nbr_bits[i] |= (1 << j);
+        }
+        for(int j = i-1; j >= 1; --j)
+        {
+          if ((nbr_bits[i] & nbr_bits[j]) == nbr_bits[j] &&
+              pat.num_BN[i] >= 2 && pat.num_BN[j] >= 2 && 
+              vertex_labels[i] == vertex_labels[j] )
+          {
+            pat.shared_lvl[i] = j;
+            break;
+          }
+          pat.shared_lvl[i] = -1;
+        }
+      }
+      for(int i = 0; i < pat.nnodes; ++i)
+      {
+        int dep = pat.shared_lvl[i];
+        std::cout << dep << " ";
+        if (dep != -1)
+        {
+          pat.num_BN_sh[i] = 0;
+          for (int j = i - 1; j >= 0; --j)
+          {
+            if ( (nbr_bits[i] & (1 << j)) > 0
+                && (nbr_bits[dep] & (1 << j)) == 0 )
+            {
+              std::cout << j << " ";
+              pat.backward_neighbors_sh[i][pat.num_BN_sh[i]++] = j;
+            }
+          }
+        }
+        std::cout << "| ";
+      }
+      std::cout << std::endl;
       // ======================= execute condition array ===============
 
+      memset(pat.condition_order, 0, sizeof(pat.condition_order));
+      memset(pat.condition_cnt, 0, sizeof(pat.condition_cnt));
+      bool skip;
       for (int i = 0; i < pat.nnodes; ++i) // idx
       {
-        int index = i * pat.nnodes * 2;
+        int index = i * PAT_SIZE * 2;
         for (int j = 0; j < pat.nnodes; ++j) // idx
         {
           if (i > j)
           {
-            pat->condition_order[index] = CondOperator::NON_EQUAL;
-            pat->condition_order[index + 1] = j;
-            pat->condition_cnt[i] += 1;
-            index += 2;
+            skip = false;
+            for (int k = 0; k < order_[order_map_[i]].size(); ++k)
+            {
+              if (order_[order_map_[i]][k].second == j)
+              {
+                pat.condition_order[index] = order_[order_map_[i]][k].first;
+                pat.condition_order[index + 1] = j;
+                pat.condition_cnt[i] += 1;
+                index += 2;
+                skip = true;
+                break;
+              }
+            }
+            if (!skip)
+            {
+              pat.condition_order[index] = CondOperator::NON_EQUAL;
+              pat.condition_order[index + 1] = j;
+              pat.condition_cnt[i] += 1;
+              index += 2;
+            }
           }
         }
       }
+
+      std::cout << "# Conditions:\n"; 
+      for(int i = 0; i < pat.nnodes; ++i)
+      {
+        int dep = pat.shared_lvl[i];
+        for (int j = 0; j < pat.condition_cnt[i]; ++j)
+        {
+          std::cout << pat.condition_order[i * PAT_SIZE * 2 + j * 2] << " " 
+                    << pat.condition_order[i * PAT_SIZE * 2 + j * 2 + 1] << " | ";
+        } 
+
+        if (dep != -1 && !LABELED)
+        {
+          for (int j = 0; j < pat.condition_cnt[dep]; ++j)
+          {
+            int op1 = pat.condition_order[dep * PAT_SIZE * 2 + j * 2];
+            int op2 = pat.condition_order[dep * PAT_SIZE * 2 + j * 2 + 1];
+            bool found = false;
+            for (int k = 0; k < pat.condition_cnt[i]; ++k)
+            {
+              int op3 = pat.condition_order[i * PAT_SIZE * 2 + k * 2];
+              int op4 = pat.condition_order[i * PAT_SIZE * 2 + k * 2 + 1];
+              if (op1 == op3 && op2 == op4)
+              {
+                found = true;
+                break;
+              }
+            }
+            if (!found)
+              pat.shared_lvl[i] = -1;
+          }
+        }
+        std::cout << "\n";
+      }
+      std::cout << std::endl;
     }
 
     int bitidx(bitarray32 a) {
@@ -377,6 +527,8 @@ enum CondOperator { LESS_THAN, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
 
       for (int i = 0; i < pat.nnodes; i++) {
         slot_labels[i][0] = (1 << vertex_labels[i + 1]);
+
+        pat.vertex_labels[i] = vertex_labels[i];
       }
 
       for (int i = pat.nnodes - 3; i >= 0; i--) {
@@ -424,6 +576,146 @@ enum CondOperator { LESS_THAN, LARGER_THAN, NON_EQUAL, OPERATOR_NONE };
       }
       //std::cout << "total number of slots: " << count << std::endl;
       assert(count <= MAX_SLOT_NUM);
+    }
+
+    bliss::Graph* GetBlissGraph()
+    {
+      bliss::Graph* bg = new bliss::Graph(pat.nnodes);
+      for (int i = 0; i < pat.nnodes; i++)
+      {
+        for (int j = 0; j < pat.nnodes; ++j) {
+          if (adj_matrix_[i][j] > 0)
+          {
+            bg->add_edge(i, j);
+          }
+        }
+      }
+      return bg;
+    }
+
+    std::string OrderToString(const std::vector<int>& p) {
+      std::string res;
+      for (auto v : p)
+        res += std::to_string(v);
+      return res;
+    }
+
+    void CompleteAutomorphisms(std::vector<std::vector<int>>& perm_group) 
+    {
+        // multiplying std::vector<uint32_t>s is just function composition: (p1*p2)[i] = p1[p2[i]]
+        std::vector<std::vector<int>> products;
+        // for filtering duplicates
+        std::unordered_set<std::string> dups;
+        for (auto f : perm_group)
+          dups.insert(OrderToString(f));
+
+        for (auto k = perm_group.begin(); k != perm_group.end(); k++) 
+        {
+          for (auto l = perm_group.begin(); l != perm_group.end(); l++) 
+          {
+            std::vector<int> p1 = *k;
+            std::vector<int> p2 = *l;
+
+            std::vector<int> product;
+            product.resize(p1.size());
+            for (int i = 0; i < product.size(); i++)
+                product[i] = p1[p2[i]];
+
+            // don't count duplicates
+            if (dups.count(OrderToString(product)) == 0) 
+            {
+                dups.insert(OrderToString(product));
+                products.push_back(product);
+            }
+          }
+        }
+
+        for (auto p : products)
+          perm_group.push_back(p);
+    }
+
+    std::vector<std::vector<int>> GetAutomorphisms(bliss::Graph* bg)
+    {
+        std::vector<std::vector<int>> result;
+        bliss::Stats stats;
+        bg->find_automorphisms(
+            stats,
+            [](void* param, const unsigned int size, const unsigned int* aut) {
+                std::vector<int> result_aut;
+                for (int i = 0; i < size; i++)
+                    result_aut.push_back(aut[i]);
+                ((std::vector<std::vector<int>>*)param)->push_back(result_aut);
+            },
+            &result);
+
+        int counter = 0;
+        int lastSize = 0;
+        while (result.size() != lastSize) 
+        {
+            lastSize = result.size();
+            CompleteAutomorphisms(result);
+            counter++;
+            if (counter > 100)
+                break;
+        }
+
+        return result;
+    }
+
+    std::map<int, std::set<int>> GetAEquivalenceClasses(const std::vector<std::vector<int>>& aut) 
+    {
+      std::map<int, std::set<int>> eclasses;
+      for (int i = 0; i < pat.nnodes; i++) 
+      {
+          std::set<int> eclass;
+          for (auto&& perm : aut)
+            eclass.insert(perm[i]);
+          int rep = *std::min_element(eclass.cbegin(), eclass.cend());
+          eclasses[rep].insert(eclass.cbegin(), eclass.cend());
+      }
+      return eclasses;
+    }
+
+    std::vector<std::pair<int, int>> GetConditions(bliss::Graph* bg)
+    {
+        std::vector<std::vector<int>> aut = GetAutomorphisms(bg);
+        std::map<int, std::set<int>> eclasses = GetAEquivalenceClasses(aut);
+
+        std::vector<std::pair<int, int>> result;
+        auto eclass_it = std::find_if(eclasses.cbegin(), eclasses.cend(), [](auto&& e) { return e.second.size() > 1; });
+        while (eclass_it != eclasses.cend() && eclass_it->second.size() > 1) 
+        {
+            const auto& eclass = eclass_it->second;
+            int n0 = *eclass.cbegin();
+
+            for (auto&& perm : aut)
+            {
+                int min = *std::min_element(std::next(eclass.cbegin()), eclass.cend(), [perm](int n, int m) { return perm[n] < perm[m]; });
+                result.emplace_back(n0, min);
+            }
+            aut.erase(std::remove_if(aut.begin(), aut.end(), [n0](auto&& perm) { return perm[n0] != n0; }), aut.end());
+
+            eclasses = GetAEquivalenceClasses(aut);
+            eclass_it = std::find_if(eclasses.cbegin(), eclasses.cend(), [](auto&& e) { return e.second.size() > 1; });
+        }
+
+        // remove duplicate conditions
+        std::sort(result.begin(), result.end());
+        result.erase(std::unique(result.begin(), result.end()), result.end());
+
+        return result;
+    }
+
+    void SetConditions(const std::vector<std::pair<int, int>>& conditions) 
+    {
+        order_.resize(pat.nnodes);
+        for (int i = 0; i < conditions.size(); i++) 
+        {
+            int first = conditions[i].first;
+            int second = conditions[i].second;
+            order_[first].push_back(std::make_pair(LESS_THAN, second));
+            order_[second].push_back(std::make_pair(LARGER_THAN, first));
+        }
     }
   };
 }
