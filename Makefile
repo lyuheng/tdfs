@@ -1,7 +1,7 @@
 DEBUG = 
 
-OPTIONS = -arch=sm_80 -gencode=arch=compute_80,code=sm_80 -Xptxas -v -maxrregcount 64 
-GPU_MATCH = src/gpu_match.cu
+OPTIONS = -arch=sm_80 -gencode=arch=compute_80,code=sm_80 -Xptxas -v -maxrregcount 64 -Lbliss -lbliss
+GPU_MATCH = src/gpu_match.cu 
 
 define compile_cu_test
 	nvcc -std=c++17 $(DEBUG) $(OPTIONS) $(1) cu_test.cu -o $(2)

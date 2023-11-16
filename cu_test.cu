@@ -5,84 +5,107 @@
 using namespace std;
 using namespace STMatch;
 
-int main(int argc, char* argv[]) {
+#define TIMEOUT_QUEUE_CAP 1'000'000
 
-  cudaSetDevice(0);
+int main(int argc, char* argv[]) {
 
   STMatch::GraphPreprocessor g(argv[1]);
   STMatch::PatternPreprocessor p(argv[2]);
+  g.build_src_vtx(p);
 
-  // copy graph and pattern to GPU global memory
-  Graph* gpu_graph = g.to_gpu();
-  Pattern* gpu_pattern = p.to_gpu();
-  JobQueue* gpu_queue = JobQueuePreprocessor(g.g, p).to_gpu();
-  CallStack* gpu_callstack;
-
-  // allocate the callstack for all warps in global memory
-  graph_node_t* slot_storage;
-  cudaMalloc(&slot_storage, sizeof(graph_node_t) * NWARPS_TOTAL * MAX_SLOT_NUM * GRAPH_DEGREE);
-  //cout << "global memory usage: " << sizeof(graph_node_t) * NWARPS_TOTAL * MAX_SLOT_NUM * UNROLL * GRAPH_DEGREE / 1024.0 / 1024 / 1024 << " GB" << endl;
-
-  std::vector<CallStack> stk(NWARPS_TOTAL);
-
-  for (int i = 0; i < NWARPS_TOTAL; i++) {
-    auto& s = stk[i];
-    memset(s.iter, 0, sizeof(s.iter));
-    memset(s.slot_size, 0, sizeof(s.slot_size));
-    s.slot_storage = (graph_node_t(*)[GRAPH_DEGREE])((char*)slot_storage + i * sizeof(graph_node_t) * MAX_SLOT_NUM * GRAPH_DEGREE);
-  }
-  cudaMalloc(&gpu_callstack, NWARPS_TOTAL * sizeof(CallStack));
-  cudaMemcpy(gpu_callstack, stk.data(), sizeof(CallStack) * NWARPS_TOTAL, cudaMemcpyHostToDevice);
-
-  size_t* gpu_res;
-  cudaMalloc(&gpu_res, sizeof(size_t) * NWARPS_TOTAL);
-  cudaMemset(gpu_res, 0, sizeof(size_t) * NWARPS_TOTAL);
-  size_t* res = new size_t[NWARPS_TOTAL];
-
-  int* idle_warps;
-  cudaMalloc(&idle_warps, sizeof(int) * GRID_DIM);
-  cudaMemset(idle_warps, 0, sizeof(int) * GRID_DIM);
-
-  int* idle_warps_count;
-  cudaMalloc(&idle_warps_count, sizeof(int));
-  cudaMemset(idle_warps_count, 0, sizeof(int));
-
-  int* global_mutex;
-  cudaMalloc(&global_mutex, sizeof(int) * GRID_DIM);
-  cudaMemset(global_mutex, 0, sizeof(int) * GRID_DIM);
-
-  bool* stk_valid;
-  cudaMalloc(&stk_valid, sizeof(bool) * GRID_DIM);
-  cudaMemset(stk_valid, 0, sizeof(bool) * GRID_DIM);
-
-  cudaEvent_t start, stop;
-  cudaEventCreate(&start);
-  cudaEventCreate(&stop);
-
-  cudaEventRecord(start);
-
-  //cout << "shared memory usage: " << sizeof(Graph) << " " << sizeof(Pattern) << " " << sizeof(JobQueue) << " " << sizeof(CallStack) * NWARPS_PER_BLOCK << " " << NWARPS_PER_BLOCK * 33 * sizeof(int) << " Bytes" << endl;
-
-  _parallel_match << <GRID_DIM, BLOCK_DIM >> > (gpu_graph, gpu_pattern, gpu_callstack, gpu_queue, gpu_res, idle_warps, 
-                                              idle_warps_count, global_mutex);
-
-
-  cudaEventRecord(stop);
-
-  cudaEventSynchronize(stop);
-
-  float milliseconds = 0;
-  cudaEventElapsedTime(&milliseconds, start, stop);
-  //printf("matching time: %f ms\n", milliseconds);
-
-  cudaMemcpy(res, gpu_res, sizeof(size_t) * NWARPS_TOTAL, cudaMemcpyDeviceToHost);
-
-  unsigned long long tot_count = 0;
-  for (int i=0; i<NWARPS_TOTAL; i++) tot_count += res[i];
-
-  if(!LABELED) tot_count = tot_count * p.PatternMultiplicity;
   
-  printf("%s\t%f\t%llu\n", argv[2], milliseconds, tot_count);
-  //cout << "count: " << tot_count << endl;
+  Graph* gpu_graph[NUM_GPU];
+  Pattern* gpu_pattern[NUM_GPU];
+  JobQueue* gpu_queue[NUM_GPU];
+  CallStack* gpu_callstack[NUM_GPU];
+  graph_node_t* slot_storage[NUM_GPU];
+  size_t* gpu_res[NUM_GPU];
+
+  int* idle_warps[NUM_GPU];
+  int* idle_warps_count[NUM_GPU];
+  int* global_mutex[NUM_GPU];
+  bool* stk_valid[NUM_GPU];
+
+  int *gpu_timeout_queue_space[NUM_GPU];
+  Queue* gpu_timeout_queue[NUM_GPU];
+
+  for(int gpuIdx=0; gpuIdx<NUM_GPU; gpuIdx++){
+    cudaSetDevice(gpuIdx);
+    
+    gpu_graph[gpuIdx] = g.to_gpu();
+    gpu_pattern[gpuIdx] = p.to_gpu();
+    gpu_queue[gpuIdx] = JobQueuePreprocessor(g.g, p, gpuIdx).to_gpu();
+    cudaMalloc(&slot_storage[gpuIdx], sizeof(graph_node_t) *  NWARPS_TOTAL * MAX_SLOT_NUM * GRAPH_DEGREE);
+    std::vector<CallStack> stk(NWARPS_TOTAL);
+    for (int i = 0; i < NWARPS_TOTAL; i++) {
+      auto& s = stk[i];
+      memset(s.iter, 0, sizeof(s.iter));
+      memset(s.slot_size, 0, sizeof(s.slot_size));
+      s.slot_storage = (graph_node_t(*)[GRAPH_DEGREE])((char*)slot_storage[gpuIdx] + i * sizeof(graph_node_t) * MAX_SLOT_NUM * GRAPH_DEGREE);
+    }
+    cudaMalloc(&gpu_callstack[gpuIdx], NWARPS_TOTAL * sizeof(CallStack));
+    cudaMemcpy(gpu_callstack[gpuIdx], stk.data(), sizeof(CallStack) * NWARPS_TOTAL, cudaMemcpyHostToDevice);
+
+    cudaMalloc(&gpu_res[gpuIdx], sizeof(size_t) * NWARPS_TOTAL);
+    cudaMemset(gpu_res[gpuIdx], 0, sizeof(size_t) * NWARPS_TOTAL);
+
+    cudaMalloc(&idle_warps[gpuIdx], sizeof(int) * GRID_DIM);
+    cudaMemset(idle_warps[gpuIdx], 0, sizeof(int) * GRID_DIM);
+
+    cudaMalloc(&idle_warps_count[gpuIdx], sizeof(int));
+    cudaMemset(idle_warps_count[gpuIdx], 0, sizeof(int));
+
+    cudaMalloc(&global_mutex[gpuIdx], sizeof(int) * GRID_DIM);
+    cudaMemset(global_mutex[gpuIdx], 0, sizeof(int) * GRID_DIM);
+
+    cudaMalloc(&stk_valid[gpuIdx], sizeof(bool) * GRID_DIM);
+    cudaMemset(stk_valid[gpuIdx], 0, sizeof(bool) * GRID_DIM);
+
+    cudaMalloc(&gpu_timeout_queue_space[gpuIdx], sizeof(int) * TIMEOUT_QUEUE_CAP * (STOP_LEVEL + 1));
+    cudaMallocManaged(&gpu_timeout_queue[gpuIdx], sizeof(Queue));
+    gpu_timeout_queue[gpuIdx]->queue_ = gpu_timeout_queue_space[gpuIdx];
+    gpu_timeout_queue[gpuIdx]->size_ = TIMEOUT_QUEUE_CAP * (STOP_LEVEL + 1);
+    gpu_timeout_queue[gpuIdx]->resetQueue();
+
+  }
+  
+  size_t* res = new size_t[NWARPS_TOTAL];
+  cudaEvent_t start[NUM_GPU], stop[NUM_GPU];
+  float milliseconds[NUM_GPU];
+  
+//--------------------  
+  #pragma omp parallel for num_threads(NUM_GPU)
+  for(int i=0; i<NUM_GPU; i++) {
+      cudaSetDevice(i);
+      cudaEventCreate(&start[i]);
+      cudaEventCreate(&stop[i]);
+      cudaEventRecord(start[i]);
+      _parallel_match << <GRID_DIM, BLOCK_DIM>> > (gpu_graph[i], gpu_pattern[i], gpu_callstack[i], gpu_queue[i], gpu_res[i], 
+                                                  idle_warps[i], idle_warps_count[i], global_mutex[i], gpu_timeout_queue[i]);
+      cudaEventRecord(stop[i]);
+      cudaEventSynchronize(stop[i]);
+      cudaEventElapsedTime(&milliseconds[i], start[i], stop[i]);
+   }
+   //printf("All Finished\n");
+
+
+
+  float maxGPU = 0;
+  unsigned long long finalCount =0;
+  for(int i=0; i<NUM_GPU; i++) {
+    cudaMemcpy(res, gpu_res[i], sizeof(size_t) * NWARPS_TOTAL, cudaMemcpyDeviceToHost);
+    size_t tot_count = 0;
+    for (int j=0; j<NWARPS_TOTAL; j++) {
+      tot_count += res[j];
+    }
+    if(milliseconds[i]>maxGPU) maxGPU = milliseconds[i];
+    finalCount+=tot_count;
+
+    //printf("%f\t", milliseconds[i]);
+  }
+
+  if(!LABELED) finalCount = finalCount * p.PatternMultiplicity;
+  printf("%s\t%f\t%llu\n", argv[2], maxGPU, finalCount);
+
   return 0;
 }
