@@ -1,6 +1,12 @@
 ### Data Preparation
 
-Go to graph_converter directory and compile graph converter
+Go to bliss directory and compile 
+```Shell
+cd bliss/
+make
+```
+
+Go to graph_converter directory and compile 
 ```Shell
 cd graph_converter/
 make
@@ -23,7 +29,9 @@ make
 
 ## Run
 ```Shell
-./bin/ulb.out ./data/bin_graph/com-youtube.ungraph data/pattern/1.g
-./bin/lb.out ./data/bin_graph/com-youtube.ungraph data/pattern/1.g
+#Unlabeled 
+./bin/ulb.out ./data/bin_graph/com-youtube.ungraph/snap.txt data/pattern/1.g
+#Labeled 
+./bin/lb.out ./data/bin_graph/com-youtube.ungraph/snap.txt data/pattern/1.g
 ```
 
