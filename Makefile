@@ -12,7 +12,7 @@ define compile_gpu_match
 endef
 
 .PHONY:all
-all:bin/lb.out bin/lb.out
+all:bin/lb.out bin/ulb.out
 
 bin/ulb.out: bin/ulb.o;
 	$(call compile_cu_test,$<,$@,false)
