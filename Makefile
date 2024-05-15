@@ -11,10 +11,6 @@ define compile_gpu_match
 	nvcc -std=c++17 $(DEBUG) $(OPTIONS) -dc -I. -I./src/Ouroboros/include $(1) -o $(2)
 endef
 
-define edit_config
-	sed -i "/#include \"config_for_ae/c\#include \"config_for_ae/$(1)\" " src/config.h
-endef
-
 .PHONY:all
 
 all:bin/table_edge_ulb.exe bin/table_edge_lb.exe
