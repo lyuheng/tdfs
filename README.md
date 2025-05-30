@@ -35,3 +35,17 @@ make
 ./bin/lb.out ./data/bin_graph/com-youtube.ungraph/snap.txt data/pattern/1.g
 ```
 
+### Adding Vertex Labels
+Vertex labels are kept in "snap.txt.label.bin". To adjust number of labels in the graph, change 4 to number of labels you'd like to test at https://github.com/lyuheng/tdfs/blob/main/graph_converter/labelize.cpp#L50.
+```
+labels[i]=std::rand()%4;
+```
+
+Then under folder graph_converter, type make to compile. Finally rerun "labelize".
+```
+cd graph_converter
+make
+./bin/labelize ./data/bin_graph/com-youtube.ungraph/snap.txt
+```
+
+
